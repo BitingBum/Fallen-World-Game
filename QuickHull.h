@@ -968,9 +968,9 @@ void CheckHorizonEdges(qh_context_t* context)
 	qh_index_t ToVert, PrevVert;
 	for (unsigned int i = 0; i < context->horizonedges.size; i++)
 	{
-		qh_half_edge_t e = context->edges[context->horizonedges.begin[i]];
-		ToVert = e.to_vertex;
+		qh_half_edge_t e = context->edges[context->horizonedges.begin[i]];		
 		PrevVert = context->edges[e.previous_he].to_vertex;
+		ToVert = e.to_vertex;
 	}
 }
 
@@ -1103,7 +1103,7 @@ void qh__build_hull(qh_context_t* context, float epsilon)
 					qh_index_t phe1 = context->edges[he1].previous_he;
 					qh_index_t phe1vert = context->edges[phe1].to_vertex;
 
-					if (phe1vert == he0vert || phe0vert == he1vert) {
+					if (phe1vert == he0vert/* || phe0vert == he1vert*/) {
 						QH_SWAP(qh_index_t, context->horizonedges.begin[j],
 							context->horizonedges.begin[i + 1]);
 						break;
@@ -1175,9 +1175,9 @@ void qh__build_hull(qh_context_t* context, float epsilon)
 				prevhe = context->edges + last;
 				nexthe = context->edges + top;
 
-				if (reversed) {
+				/*if (reversed) {
 					QH_SWAP(qh_half_edge_t*, prevhe, nexthe);
-				}
+				}*/
 
 				verts[0] = prevhe->to_vertex;
 				verts[1] = nexthe->to_vertex;
@@ -1264,12 +1264,12 @@ void qh__build_hull(qh_context_t* context, float epsilon)
 				qh_half_edge_t* he1;
 				int ii;
 
-				if (reversed) {
+				/*if (reversed) {
 					ii = (i == 0) ? context->newhorizonedges.size - 1 : (i - 1);
 				}
-				else {
+				else {*/
 					ii = (i + 1) % context->newhorizonedges.size;
-				}
+				//}
 
 				phe0 = context->edges[context->newhorizonedges.begin[i]].previous_he;
 				nhe1 = context->edges[context->newhorizonedges.begin[ii]].next_he;
@@ -1376,7 +1376,7 @@ qh_face_t* qh__build_tetrahedron(qh_context_t* context, float epsilon)
 	faces = qh__next_face(context);
 	qh__face_init(&faces[0], vertices, context);
 #ifdef WITH_DEBUG
-	Check_QH_Face(context, faces[0]);
+	//Check_QH_Face(context, faces[0]);
 #endif // WITH_DEBUG
 
 
@@ -1396,7 +1396,7 @@ qh_face_t* qh__build_tetrahedron(qh_context_t* context, float epsilon)
 			qh__next_face(context);
 			qh__face_init(face, facevertices, context);
 #ifdef WITH_DEBUG
-			Check_QH_Face(context, *face);
+			//Check_QH_Face(context, *face);
 #endif // WITH_DEBUG
 
 			e0 = context->edges + faces[i + 1].edges[0];
@@ -2090,13 +2090,13 @@ uint32 qh_quickhull3d(TArray<FVector>& Vertices, unsigned int nvertices, TArray<
 
 	qh__free_context(&context);	
 	
-	/*TArray<uint8> ExcessIndices;
+	TArray<uint8> ExcessIndices;
 	FillExcessIndices(ExcessIndices, nvertices, Faces);
 	
 	if (HasExcessVerts(ExcessIndices))
 	{
 		VerticesAndIndicesCorrection(Vertices, Faces, ExcessIndices);		
-	}*/
+	}
 	
 #ifdef WITH_DEBUG
 	for (int i = 0; i < Faces.Num(); i++)
