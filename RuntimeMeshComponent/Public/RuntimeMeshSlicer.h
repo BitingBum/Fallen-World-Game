@@ -8,7 +8,7 @@
 
 ////////////////////////////////////////////////////////////
 #include "RuntimeMeshCollision.h"
-#define QUICKHULL_IMPLEMENTATION
+//#define QUICKHULL_IMPLEMENTATION
 #include "QuickHull.h"
 ////////////////////////////////////////////////////////////
 
@@ -64,7 +64,10 @@ class RUNTIMEMESHCOMPONENT_API URuntimeMeshSlicer : public UBlueprintFunctionLib
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/** Util to slice a convex hull with a plane */
-	static void SliceConvexElem(FRuntimeMeshCollisionConvexMesh* ConvexSection, const FPlane& SlicePlane, TArray<FVector>& SlicedConvexVerts, TArray<FVector>&OtherSlicedConvexVerts, bool bCreateOtherHalf);
+	static void SliceConvexElem(FRuntimeMeshCollisionConvexMesh* ConvexSection, const FPlane& SlicePlane,
+								TArray<FVector>& FirstHalfVertices, TArray<FVector>& OtherHalfVertices,
+								TArray<int32>& FirstHalfIndices, TArray<int32>& OtherHalfIndices,
+								bool bCreateOtherHalf);
 	// If we got something valid, add it);
 
 	/** Create new FKConvexElem* from FRuntimeMeshCollisionConvexMesh* planes and vertices*/

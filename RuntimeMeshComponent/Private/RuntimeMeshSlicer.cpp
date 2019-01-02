@@ -212,38 +212,89 @@ void URuntimeMeshSlicer::SliceConvexElem(const FKConvexElem& InConvex, const FPl
 ///////////////////////////////////////////////////////////////////////////SliceConvexElem Overloaded////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+
+
 void URuntimeMeshSlicer::SliceConvexElem(FRuntimeMeshCollisionConvexMesh* ConvexSection, const FPlane& SlicePlane,
-										TArray<FVector>& SlicedConvexVerts, TArray<FVector>& OtherSlicedConvexVerts, bool bCreateOtherHalf)
+										TArray<FVector>& FirstHalfVertices, TArray<FVector>& OtherHalfVertices,
+										TArray<int32>& FirstHalfIndices, TArray<int32>& OtherHalfIndices,
+										bool bCreateOtherHalf)
 {
+	
+
 	FPlane SlicePlaneFlipped = SlicePlane.Flip();
+	//TruncPlane(SlicePlaneFlipped);
 
-	// Get set of planes that make up hull
-	TArray<FPlane> ConvexPlanes;
-	TArray<TArray<FVector>> PlanesAndTheirPoints;
+	//Test Plane
+	//FPlane SlicePlaneFlipped = FPlane(0.006157, -0.473720, -0.880654, -98.7207870);
+
+	//SlicePlaneFlipped.X = 
+
+	TArray<FVector>& ConvexVertices = ConvexSection->VertexBuffer;
+	TArray<int32>& ConvexIndices = ConvexSection->IndexBuffer;
+
 	
+	/*TArray<Face> Faces;
+	qh_quickhull3d(ConvexVertices, ConvexVertices.Num(), Faces,false);
+	WriteVertices(ConvexVertices);
+	CheckFaces(Faces);
 
-	//GetPlanesFromHull(ConvexSection->VertexBuffer, ConvexPlanes, PlanesAndTheirPoints);
-	//if (ConvexPlanes.Num() >= 4)
-	//{
-	//	SliceHull(PlanesAndTheirPoints, SlicePlane, SlicedConvexVerts, OtherSlicedConvexVerts, bCreateOtherHalf);
+	ConvexIndices.Empty();
+	for (int32 i = 0; i < Faces.Num(); i++)
+	{
+		for (int32 j = 0; j < Faces[i].Indices.Num(); j++)
+		{
+			ConvexIndices.Add(Faces[i].Indices[j]);
+		}
+	}*/
 
-
-	//	// Add on the slicing plane (need to flip as it culls geom in the opposite sense to our geom culling code)
-	//	//ConvexPlanes.Add(SlicePlaneFlipped);
-
-	//	// Create output convex based on new set of planes
-	//	/*FKConvexElem SlicedElem;
-	//	bool bSuccess = SlicedElem.HullFromPlanes(ConvexPlanes, ConvexSection->VertexBuffer);
-	//	if (bSuccess)
-	//	{
-	//		OutConvexShapes = SlicedElem.VertexData;
-	//	}*/
-
-	//}
-	
+	//SlicePlaneFlipped = FPlane(FVector(-100, 0, 50), FVector(100, 0, 50), FVector(0, 100, 50));
+	SliceConvexHull(ConvexVertices, ConvexIndices, SlicePlaneFlipped,
+		FirstHalfVertices, OtherHalfVertices,
+		FirstHalfIndices, OtherHalfIndices,
+		bCreateOtherHalf);
 	
 }
 
+
+void CreateMeshSectionFromFaces(URuntimeMesh* InRuntimeMesh, const TArray<FVector>& Vertices, const TArray<Face>& Faces)
+{
+	TArray<FVector>Normals;
+	TArray<int32> Triangles;
+	
+	for (int32 i = 0; i < Faces.Num(); i++)
+	{
+		for (int32 j = 0; j < Faces[i].Indices.Num();j++)
+		{
+			Triangles.Add(Faces[i].Indices[j]);
+		}		
+		FPlane NewPlane = FPlane(Vertices[Faces[i].Indices[0]], Vertices[Faces[i].Indices[2]], Vertices[Faces[i].Indices[1]]);
+		FVector Normal = (FVector)NewPlane;
+		Normal.Normalize();
+		Normals.Add(Normal);
+	}
+	TArray<FVector2D> UV;
+	TArray<FColor> Colors;
+	TArray<FRuntimeMeshTangent> Tangents;
+	InRuntimeMesh->CreateMeshSection(InRuntimeMesh->GetNumSections(), Vertices, Triangles, Normals, UV, Colors, Tangents);
+}
+void CreateMeshSectionFromVertsAndIndices(URuntimeMesh* InRuntimeMesh, const TArray<FVector>& Vertices, const TArray<int32>& Indices)
+{
+	TArray<FVector>Normals;
+	
+
+	for (int32 i = 0; i < Indices.Num(); i+=3)
+	{		
+		FPlane NewPlane = FPlane(Vertices[Indices[i+0]], Vertices[Indices[i+2]], Vertices[Indices[i+1]]);
+		FVector Normal = (FVector)NewPlane;
+		Normal.Normalize();
+		Normals.Add(Normal);
+	}
+	TArray<FVector2D> UV;
+	TArray<FColor> Colors;
+	TArray<FRuntimeMeshTangent> Tangents;
+	InRuntimeMesh->CreateMeshSection(InRuntimeMesh->GetNumSections(), Vertices, Indices, Normals, UV, Colors, Tangents);
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FKConvexElem* URuntimeMeshSlicer::CreateFKConvexElem(FRuntimeMeshCollisionConvexMesh* ConvexSection)
@@ -280,6 +331,13 @@ void URuntimeMeshSlicer::SliceRuntimeMeshConvexCollision(URuntimeMesh* InRuntime
 	TArray<TArray<FVector>> SlicedCollision;
 	TArray<TArray<FVector>> OtherSlicedCollision;
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+	TArray<TArray<int32>> SlicedIndices;
+	TArray<TArray<int32>> OtherSlicedIndices;
+
+	
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	UBodySetup* BodySetup = InRuntimeMesh->GetBodySetup();
 	BodySetup = InRuntimeMesh->GetBodySetup();
 	FRuntimeMeshDataRef OldInRuntimeMeshData = InRuntimeMesh->GetRuntimeMeshData();
@@ -287,13 +345,20 @@ void URuntimeMeshSlicer::SliceRuntimeMeshConvexCollision(URuntimeMesh* InRuntime
 	
 
 	if (&OldInRuntimeMeshData != nullptr)
-	{
+	{		
+
 		int32 MapSize = OldInRuntimeMeshData->NumConvexCollisionSections();
 		for (int32 ConvexIndex = 0; ConvexIndex < MapSize; ConvexIndex++)
 		{
-			FRuntimeMeshCollisionConvexMesh* ConvexCollisionSection = OldInRuntimeMeshData->GetConvexCollisionSection(ConvexIndex);
+			FRuntimeMeshCollisionConvexMesh* ConvexCollisionSection = OldInRuntimeMeshData->GetConvexCollisionSection(ConvexIndex);				
 
 			int32 BoxCompare = CompareBoxPlane(ConvexCollisionSection->BoundingBox, SlicePlane);
+
+			/////////////////////////////////////////////////////////////////////////////////////////////////
+			TArray<int32> Indices;
+			TArray<int32> OtherIndices;
+				
+			/////////////////////////////////////////////////////////////////////////////////////////////////
 
 			// If box totally clipped, add to other half (if desired)
 			if (BoxCompare == -1)
@@ -301,24 +366,30 @@ void URuntimeMeshSlicer::SliceRuntimeMeshConvexCollision(URuntimeMesh* InRuntime
 				if (bCreateOtherHalf)
 				{					
 					OtherSlicedCollision.Add(ConvexCollisionSection->VertexBuffer);
+					OtherSlicedIndices.Add(ConvexCollisionSection->IndexBuffer);
 				}
 			}
 			// If box totally valid, just keep mesh as is
 			else if (BoxCompare == 1)
 			{
 				SlicedCollision.Add(ConvexCollisionSection->VertexBuffer);
+				SlicedIndices.Add(ConvexCollisionSection->IndexBuffer);
 			}
 			// Need to actually slice the convex shape
 			else
 			{				
 				TArray<FVector> SlicedConvexVerts;
 				TArray<FVector> OtherSlicedConvexVerts;
-				SliceConvexElem(ConvexCollisionSection, SlicePlane, SlicedConvexVerts, OtherSlicedConvexVerts, bCreateOtherHalf);
+				
+				SliceConvexElem(ConvexCollisionSection, SlicePlane, SlicedConvexVerts, OtherSlicedConvexVerts,
+								Indices, OtherIndices,
+								bCreateOtherHalf);
 				// If we got something valid, add it
 				if (SlicedConvexVerts.Num() >= 4)
 				{
 					SlicedCollision.Add(SlicedConvexVerts);
-				}			
+					SlicedIndices.Add(Indices);
+				}		
 
 				// Slice again to get the other half of the collision, if desired
 				if (bCreateOtherHalf)
@@ -328,18 +399,21 @@ void URuntimeMeshSlicer::SliceRuntimeMeshConvexCollision(URuntimeMesh* InRuntime
 					if (OtherSlicedConvexVerts.Num() >= 4)
 					{
 						OtherSlicedCollision.Add(OtherSlicedConvexVerts);
+						OtherSlicedIndices.Add(OtherIndices);
 					}					
+
+					CreateMeshSectionFromVertsAndIndices(OutOtherHalf, OtherSlicedConvexVerts, OtherIndices);
 				}
 			}
 		}
 
 		// Update collision of runtime mesh
-		InRuntimeMesh->SetCollisionConvexMeshes(SlicedCollision);
+		InRuntimeMesh->SetCollisionConvexMeshes(SlicedCollision, SlicedIndices);
 
 		// Set collision for other mesh
 		if (bCreateOtherHalf)
 		{
-			OutOtherHalf->SetCollisionConvexMeshes(OtherSlicedCollision);
+			OutOtherHalf->SetCollisionConvexMeshes(OtherSlicedCollision, OtherSlicedIndices);
 		}
 	}
 }

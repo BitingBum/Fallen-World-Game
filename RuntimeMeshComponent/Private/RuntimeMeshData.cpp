@@ -8,7 +8,14 @@
 #include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/PhysicsSettings.h"
 #include "RuntimeMeshProxy.h"
+
+//////////////////////////////////////////////////////////////////////
+//#define QUICKHULL_IMPLEMENTATION
+//#include "QuickHull.h"
+//////////////////////////////////////////////////////////////////////
 #include "../Public/RuntimeMeshData.h"
+
+
 
 
 DECLARE_CYCLE_STAT(TEXT("RM - Validation - Create"), STAT_RuntimeMesh_CheckCreate, STATGROUP_RuntimeMesh);
@@ -913,8 +920,9 @@ void FRuntimeMeshData::ClearAllMeshCollisionSections()
 //}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int32 FRuntimeMeshData::AddConvexCollisionSection(TArray<FVector> ConvexVerts)
+int32 FRuntimeMeshData::AddConvexCollisionSection(const TArray<FVector>& ConvexVerts, const TArray<TArray<uint32>> Indices, const TArray<TMap<uint32, int64>> Neighbours)
 {
 	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_AddConvexCollisionSection);
 
@@ -928,16 +936,62 @@ int32 FRuntimeMeshData::AddConvexCollisionSection(TArray<FVector> ConvexVerts)
 
 	auto& Section = ConvexCollisionSections.Add(NewIndex);
 
+	////////////////////////////////////////////////////////////////////////
+	/*Section.IndexBuffer = Indices;
+	Section.NeighboursBuffer = Neighbours;*/
+	
+	////////////////////////////////////////////////////////////////////////
+
 	Section.VertexBuffer = ConvexVerts;
 	Section.BoundingBox = FBox(ConvexVerts);
-
-	/*FVector Min = Section.BoundingBox.Min;
-	FVector Max = Section.BoundingBox.Max;*/
 
 	MarkCollisionDirty();
 
 	return NewIndex;
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int32 FRuntimeMeshData::AddConvexCollisionSection(TArray<FVector>& ConvexVerts)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_AddConvexCollisionSection);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	int32 NewIndex = 0;
+	while (ConvexCollisionSections.Contains(NewIndex))
+	{
+		NewIndex++;
+	}
+
+	auto& Section = ConvexCollisionSections.Add(NewIndex);
+
+	////////////////////////////////////////////////////////////////////////
+	TArray<Face> Faces;
+	qh_quickhull3d(ConvexVerts, ConvexVerts.Num(), Faces, false);
+
+	for (int32 i = 0; i < Faces.Num(); i++)
+	{
+		for (int32 j = 0; j < Faces[i].Indices.Num(); j++)
+		{
+			Section.IndexBuffer.Add(Faces[i].Indices[j]);
+		}		
+	}
+	////////////////////////////////////////////////////////////////////////
+
+	Section.VertexBuffer = ConvexVerts;
+	Section.BoundingBox = FBox(ConvexVerts);	
+
+	/*WriteVertices(Section.VertexBuffer);
+	CheckFaces(Section.FacesBuffer);*/
+
+	MarkCollisionDirty();
+
+	return NewIndex;
+}
+
+
+
 
 void FRuntimeMeshData::SetConvexCollisionSection(int32 ConvexSectionIndex, TArray<FVector> ConvexVerts)
 {
@@ -1004,6 +1058,30 @@ void FRuntimeMeshData::ClearConvexCollisionSections()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void FRuntimeMeshData::SetCollisionConvexMeshes(const TArray<TArray<FVector>>& ConvexMeshes, const TArray<TArray<int32>>& Indices)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_ClearAllConvexCollisionSections);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	ConvexCollisionSections.Empty();	
+
+	for (int32 i = 0; i < ConvexMeshes.Num(); i++)
+	{
+		auto& Section = ConvexCollisionSections.FindOrAdd(i);
+
+		Section.IndexBuffer = Indices[i];
+		
+		Section.VertexBuffer = ConvexMeshes[i];
+		Section.BoundingBox = FBox(ConvexMeshes[i]);
+	}
+
+	MarkCollisionDirty();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 
@@ -1685,6 +1763,7 @@ TMap<int32, FRuntimeMeshCollisionConvexMesh> FRuntimeMeshData::GetConvexCollisio
 
 
 
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////CONVEX COLLISION SECTIONS////////////////////////////////////////////////
 
@@ -1718,7 +1797,30 @@ TMap<int32, FRuntimeMeshCollisionConvexMesh> FRuntimeMeshData::GetConvexCollisio
 
 
 
+void FRuntimeMeshData::FacesToBuffers(const TArray<Face>& Faces, TArray<TArray<uint32>>& IndexBuffer, TArray<TMap<uint32, int64>>& NeighboursBuffer)
+{
+	IndexBuffer.Empty();
+	NeighboursBuffer.Empty();
+	for (int i = 0; i < Faces.Num(); i++)
+	{
+		IndexBuffer.Add(Faces[i].Indices);
+		NeighboursBuffer.Add(Faces[i].Neighbours);
+	}
+}
 
+void FRuntimeMeshData::BuffersToFaces(TArray<Face>& Faces, const TArray<TArray<uint32>>& IndexBuffer, const TArray<TMap<uint32, int64>>& NeighboursBuffer)
+{
+	Faces.Empty();
+	for (int i = 0; i < IndexBuffer.Num(); i++)
+	{
+		Face NewFace;
+		NewFace.Number = i;
+		NewFace.Indices = IndexBuffer[i];
+		NewFace.Neighbours = NeighboursBuffer[i];
+		NewFace.AllNeighboursFound = true;
+		Faces.Add(NewFace);
+	}
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

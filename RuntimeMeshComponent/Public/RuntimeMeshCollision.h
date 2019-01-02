@@ -5,8 +5,12 @@
 //#include "CoreMinimal.h"
 #include "Engine.h"
 #include "Components/MeshComponent.h"
-#include "RuntimeMeshCollision.generated.h"
 
+//////////////////////////////////////////////////////////
+#include "QuickHull.h"
+//////////////////////////////////////////////////////////
+
+#include "RuntimeMeshCollision.generated.h"
 
 
 struct RUNTIMEMESHCOMPONENT_API FRuntimeMeshCollisionSection
@@ -28,7 +32,10 @@ struct RUNTIMEMESHCOMPONENT_API FRuntimeMeshCollisionConvexMesh
 	TArray<FVector> VertexBuffer;
 	FBox BoundingBox;
 	/////////////////////////////////////////////////////////////
-	//TArray<FPlane> ConvexPlanes;
+	/*TArray<TArray<uint32>> IndexBuffer;
+	TArray<TMap<uint32, int64>> NeighboursBuffer;*/
+	//TArray<Face> FacesBuffer;
+	TArray<int32> IndexBuffer;
 	/////////////////////////////////////////////////////////////
 
 	friend FArchive& operator <<(FArchive& Ar, FRuntimeMeshCollisionConvexMesh& Section)
@@ -36,7 +43,10 @@ struct RUNTIMEMESHCOMPONENT_API FRuntimeMeshCollisionConvexMesh
 		Ar << Section.VertexBuffer;
 		Ar << Section.BoundingBox;
 		/////////////////////////////////////////////////////////////
-		//Ar << Section.ConvexPlanes;
+		/*Ar << Section.IndexBuffer;
+		Ar << Section.NeighboursBuffer;*/
+		//Ar << Section.FacesBuffer;
+		Ar << Section.IndexBuffer;
 		/////////////////////////////////////////////////////////////
 		return Ar;
 	}

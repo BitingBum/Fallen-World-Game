@@ -5,6 +5,10 @@
 #include "RuntimeMeshComponentPlugin.h"
 #include "RuntimeMeshCore.h"
 
+////////////////////////////////////////////////////////////////////////////////////////
+#include "QuickHull.h"
+////////////////////////////////////////////////////////////////////////////////////////
+
 
 struct FRuntimeMeshCollisionSection_OLD
 {
@@ -24,7 +28,10 @@ struct FRuntimeConvexCollisionSection_OLD
 	TArray<FVector> VertexBuffer;
 	FBox BoundingBox;
 	//////////////////////////////////////////////////////////
-	//TArray<FPlane> ConvexPlanes;
+	/*TArray<TArray<uint32>> IndexBuffer;
+	TArray<TMap<uint32, int64>> NeighboursBuffer;*/
+	//TArray<Face> FacesBuffer;
+	TArray<int32> IndexBuffer;
 	//////////////////////////////////////////////////////////
 
 	friend FArchive& operator <<(FArchive& Ar, FRuntimeConvexCollisionSection_OLD& Section)
@@ -32,7 +39,10 @@ struct FRuntimeConvexCollisionSection_OLD
 		Ar << Section.VertexBuffer;
 		Ar << Section.BoundingBox;
 		////////////////////////////////////////////////////////
-		//Ar << Section.ConvexPlanes;
+		/*Ar << Section.IndexBuffer;
+		Ar << Section.NeighboursBuffer;*/
+		//Ar << Section.FacesBuffer;
+		Ar << Section.IndexBuffer;
 		////////////////////////////////////////////////////////
 		return Ar;
 	}
