@@ -5,7 +5,6 @@
 #include "FractureChunkActor.h"
 #include "IsleComponent.h"
 #include "IsleActor.h"
-#include "ConstraintActor.h"
 
 #include "RuntimeMesh.h"
 #include "RuntimeMeshData.h"
@@ -207,11 +206,11 @@ void ARuntimeDestructibleActor::PostEditChangeChainProperty(struct FPropertyChan
 
 void ARuntimeDestructibleActor::OnConstruction(const FTransform& Transform)
 {
-	if (this->PostEditChangeHelper.bFullRebuild)
+	/*if (this->PostEditChangeHelper.bFullRebuild)
 	{		
 		this->RMC_DestructibleMesh->SetDestructibleMesh(this->OriginDestructibleMesh);
 		CopyDestructibleMeshDataToRuntimeMeshComponent(this, true, true, false);
-	}
+	}*/
 }
 #endif
 
@@ -390,8 +389,11 @@ bool ARuntimeDestructibleActor::CopyDestructibleMeshDataToRuntimeMeshComponent(A
 
 #endif //WITH_EDITOR
 
-void ARuntimeDestructibleActor::ApplyRadiusDamage(ARuntimeDestructibleActor* RuntimeDestructibleActor, float BaseDamage, const FVector& HurtOrigin, float DamageRadius, float ImpulseStrength, bool bFullDamage)
+void ARuntimeDestructibleActor::ApplyRadiusDamage(ARuntimeDestructibleActor* RuntimeDestructibleActor, float BaseDamage, const FVector Impulse, const FVector HurtOrigin, float DamageRadius, float ImpulseStrength, bool bFullDamage)
 {
+	TArray <UFractureChunkComponent*>& FractureChunks = RuntimeDestructibleActor->FractureChunks;
+	TArray <UIsleComponent*>& Isles = RuntimeDestructibleActor->Isles;
+
 	FCollisionQueryParams SphereParams(SCENE_QUERY_STAT(ApplyRadialDamage), false);
 
 	TArray<FOverlapResult> Overlaps;
@@ -410,7 +412,52 @@ void ARuntimeDestructibleActor::ApplyRadiusDamage(ARuntimeDestructibleActor* Run
 		UFractureChunkComponent* FractureChunk = Cast<UFractureChunkComponent>(OverlapComp);
 		if (FractureChunk != nullptr)
 		{
-			FractureChunk->SetSimulatePhysics(true);			
+			//FractureChunk->SetVisibility(true);
+			//FractureChunk->SetSimulatePhysics(true);
+			//FractureChunk->SetCollisionProfileName("BlockAllDynamic");
+
+			
+			if (FractureChunk->ChildrenIndices.Num() > 0)
+			{
+				TArray <int32> IsleIndices;
+
+				FractureChunk->SetVisibility(false);
+				FractureChunk->SetSimulatePhysics(false);
+				FractureChunk->SetCollisionProfileName("NoCollision");
+
+				for (int32& i : FractureChunk->ChildrenIndices)
+				{
+					
+					if (FractureChunks[i]->OverlapIndices.Num() == 0)
+					{
+						FractureChunks[i]->SetSimulatePhysics(true);
+					}
+					else
+					{
+						int32 IsleIndex = IsleIndices.Find(FractureChunks[i]->IsleIndex);
+						if (IsleIndex == INDEX_NONE)
+						{
+							IsleIndex = IsleIndices.Add(FractureChunks[i]->IsleIndex);
+							Isles[FractureChunks[i]->IsleIndex]->SetSimulatePhysics(true);
+							Isles[FractureChunks[i]->IsleIndex]->SetCollisionProfileName("OverlapAllDynamic");
+						}
+					}
+					
+					FractureChunks[i]->SetVisibility(true);
+					FractureChunks[i]->SetCollisionProfileName("BlockAllDynamic");
+					//FractureChunks[i]->SetCollisionProfileName("FractureChunk");
+					//FractureChunks[i]->AddImpulseAtLocation(Impulse, HurtOrigin);
+				}
+
+				
+				
+				
+			}
+			else
+			{
+				FractureChunk->SetSimulatePhysics(true);
+				FractureChunk->AddImpulseAtLocation(Impulse, HurtOrigin);
+			}
 		}
 	}
 }
@@ -1145,6 +1192,7 @@ AIsleActor* ARuntimeDestructibleActor::SpawnIsleActor(ARuntimeDestructibleActor*
 
 	Isle->SetSimulatePhysics(false);	
 	Isle->SetCollisionProfileName(TEXT("NoCollision"));
+	//Isle->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
 
 	Isle->SetVisibility(false);
 	Isle->SetCastShadow(false);
@@ -1175,7 +1223,9 @@ AFractureChunkActor* ARuntimeDestructibleActor::SpawnFractureChunkActor(ARuntime
 	FractureChunk->SetCollisionUseComplexAsSimple(false);
 
 	FractureChunk->SetSimulatePhysics(false);
+	//FractureChunk->SetCollisionProfileName(TEXT("BlockAllDynamic"));
 	FractureChunk->SetCollisionProfileName(TEXT("NoCollision"));
+	//FractureChunk->SetCollisionProfileName(TEXT("FractureChunk"));
 
 	FractureChunk->SetVisibility(false);
 	FractureChunk->SetCastShadow(false);
@@ -1401,84 +1451,84 @@ void ARuntimeDestructibleActor::FillOverlapsDepthParents(TArray<FTempChunk>& Tem
 void ARuntimeDestructibleActor::CreatePhysicsConstraint(AIsleActor* RootIsleActor, AFractureChunkActor* TargetFractureChunkActor)
 {
 
-	AConstraintActor* ConstraintActor = RootIsleActor->GetWorld()->SpawnActor<AConstraintActor>(AConstraintActor::StaticClass(), RootIsleActor->GetTransform());
+	//AConstraintActor* ConstraintActor = RootIsleActor->GetWorld()->SpawnActor<AConstraintActor>(AConstraintActor::StaticClass(), RootIsleActor->GetTransform());
 
 
-	//set up the constraint instance with all the desired values
-	FConstraintInstance ConstraintInstance;
+	////set up the constraint instance with all the desired values
+	//FConstraintInstance ConstraintInstance;
 
-	ConstraintInstance.ProfileInstance.LinearLimit.bSoftConstraint = false;
-	ConstraintInstance.SetDisableCollision(true);	
-	
+	//ConstraintInstance.ProfileInstance.LinearLimit.bSoftConstraint = false;
+	//ConstraintInstance.SetDisableCollision(true);	
+	//
 
-	ConstraintInstance.SetLinearXMotion(ELinearConstraintMotion::LCM_Locked);
-	ConstraintInstance.SetLinearYMotion(ELinearConstraintMotion::LCM_Locked);
-	ConstraintInstance.SetLinearZMotion(ELinearConstraintMotion::LCM_Locked);
+	//ConstraintInstance.SetLinearXMotion(ELinearConstraintMotion::LCM_Locked);
+	//ConstraintInstance.SetLinearYMotion(ELinearConstraintMotion::LCM_Locked);
+	//ConstraintInstance.SetLinearZMotion(ELinearConstraintMotion::LCM_Locked);
 
-	ConstraintInstance.SetLinearLimitSize(0);
-	ConstraintInstance.SetLinearXLimit(ELinearConstraintMotion::LCM_Locked, 0);
-	ConstraintInstance.SetLinearYLimit(ELinearConstraintMotion::LCM_Locked, 0);
-	ConstraintInstance.SetLinearZLimit(ELinearConstraintMotion::LCM_Locked, 0);	
+	//ConstraintInstance.SetLinearLimitSize(0);
+	//ConstraintInstance.SetLinearXLimit(ELinearConstraintMotion::LCM_Locked, 0);
+	//ConstraintInstance.SetLinearYLimit(ELinearConstraintMotion::LCM_Locked, 0);
+	//ConstraintInstance.SetLinearZLimit(ELinearConstraintMotion::LCM_Locked, 0);	
 
-	ConstraintInstance.ProfileInstance.LinearLimit.bSoftConstraint = false;
-	ConstraintInstance.ProfileInstance.LinearLimit.Stiffness = 0;
-	ConstraintInstance.ProfileInstance.LinearLimit.Damping = 0;
-	
+	//ConstraintInstance.ProfileInstance.LinearLimit.bSoftConstraint = false;
+	//ConstraintInstance.ProfileInstance.LinearLimit.Stiffness = 0;
+	//ConstraintInstance.ProfileInstance.LinearLimit.Damping = 0;
+	//
 
-	ConstraintInstance.AngularRotationOffset = FRotator::ZeroRotator;
+	//ConstraintInstance.AngularRotationOffset = FRotator::ZeroRotator;
 
-	ConstraintInstance.SetAngularSwing1Motion(EAngularConstraintMotion::ACM_Locked);
-	ConstraintInstance.SetAngularSwing2Motion(EAngularConstraintMotion::ACM_Locked);
-	ConstraintInstance.SetAngularTwistMotion(EAngularConstraintMotion::ACM_Locked);
+	//ConstraintInstance.SetAngularSwing1Motion(EAngularConstraintMotion::ACM_Locked);
+	//ConstraintInstance.SetAngularSwing2Motion(EAngularConstraintMotion::ACM_Locked);
+	//ConstraintInstance.SetAngularTwistMotion(EAngularConstraintMotion::ACM_Locked);
 
-	ConstraintInstance.SetAngularDOFLimitScale(0, 0, 0);
-	ConstraintInstance.SetAngularSwing1Limit(EAngularConstraintMotion::ACM_Locked, 0);
-	ConstraintInstance.SetAngularSwing2Limit(EAngularConstraintMotion::ACM_Locked, 0);
-	ConstraintInstance.SetAngularTwistLimit(EAngularConstraintMotion::ACM_Locked, 0);
+	//ConstraintInstance.SetAngularDOFLimitScale(0, 0, 0);
+	//ConstraintInstance.SetAngularSwing1Limit(EAngularConstraintMotion::ACM_Locked, 0);
+	//ConstraintInstance.SetAngularSwing2Limit(EAngularConstraintMotion::ACM_Locked, 0);
+	//ConstraintInstance.SetAngularTwistLimit(EAngularConstraintMotion::ACM_Locked, 0);
 
 
-	ConstraintInstance.ProfileInstance.ConeLimit.bSoftConstraint = false;
+	//ConstraintInstance.ProfileInstance.ConeLimit.bSoftConstraint = false;
 
-	ConstraintInstance.ProfileInstance.TwistLimit.bSoftConstraint = false;
+	//ConstraintInstance.ProfileInstance.TwistLimit.bSoftConstraint = false;
 
-	ConstraintInstance.ProfileInstance.ConeLimit.Stiffness = 0;
-	ConstraintInstance.ProfileInstance.ConeLimit.Damping = 0;
-	ConstraintInstance.ProfileInstance.TwistLimit.Stiffness = 0;
-	ConstraintInstance.ProfileInstance.TwistLimit.Damping = 0;
+	//ConstraintInstance.ProfileInstance.ConeLimit.Stiffness = 0;
+	//ConstraintInstance.ProfileInstance.ConeLimit.Damping = 0;
+	//ConstraintInstance.ProfileInstance.TwistLimit.Stiffness = 0;
+	//ConstraintInstance.ProfileInstance.TwistLimit.Damping = 0;
 
-	//UPhysicsConstraintComponent* ConstraintComp = NewObject<UPhysicsConstraintComponent>(RootIsleActor);
-	//if (!ConstraintComp)
-	//{
-	//	//UE_LOG constraint UObject could not be created!
-	//	return;
-	//}
+	////UPhysicsConstraintComponent* ConstraintComp = NewObject<UPhysicsConstraintComponent>(RootIsleActor);
+	////if (!ConstraintComp)
+	////{
+	////	//UE_LOG constraint UObject could not be created!
+	////	return;
+	////}
 
-		
-	UPhysicsConstraintComponent* ConstraintComp = ConstraintActor->ConstraintComponent;	
-	
-	
-	ConstraintComp->ConstraintInstance = ConstraintInstance;
-	//~~~~~~~~~~~~~~~~~~~~~~~~
+	//	
+	//UPhysicsConstraintComponent* ConstraintComp = ConstraintActor->ConstraintComponent;	
+	//
+	//
+	//ConstraintComp->ConstraintInstance = ConstraintInstance;
+	////~~~~~~~~~~~~~~~~~~~~~~~~
 
-	//Set World Location
-	ConstraintComp->SetWorldLocation(RootIsleActor->GetActorLocation());
+	////Set World Location
+	//ConstraintComp->SetWorldLocation(RootIsleActor->GetActorLocation());
 
-	//Attach to Root!
-	//ConstraintComp->AttachToComponent(RootIsleActor->GetRootComponent(), FAttachmentTransformRules(EAttachmentRule(EAttachmentRule::KeepWorld), true));
+	////Attach to Root!
+	////ConstraintComp->AttachToComponent(RootIsleActor->GetRootComponent(), FAttachmentTransformRules(EAttachmentRule(EAttachmentRule::KeepWorld), true));
 
-	ConstraintComp->ConstraintActor1 = RootIsleActor;
+	//ConstraintComp->ConstraintActor1 = RootIsleActor;
 
-	ConstraintComp->ConstraintActor2 = TargetFractureChunkActor;
+	//ConstraintComp->ConstraintActor2 = TargetFractureChunkActor;
 
-	
-	UpdateBodySetup(TargetFractureChunkActor->FractureChunkComponent);
+	//
+	//UpdateBodySetup(TargetFractureChunkActor->FractureChunkComponent);
 
-	//~~~ Init Constraint ~~~
-	ConstraintComp->SetConstrainedComponents(RootIsleActor->IsleComponent, NAME_None, TargetFractureChunkActor->FractureChunkComponent, NAME_None);
+	////~~~ Init Constraint ~~~
+	//ConstraintComp->SetConstrainedComponents(RootIsleActor->IsleComponent, NAME_None, TargetFractureChunkActor->FractureChunkComponent, NAME_None);
 
-	
+	//
 
-	//ConstraintComp->RegisterComponent();
+	////ConstraintComp->RegisterComponent();
 }
 
 
