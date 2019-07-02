@@ -27,11 +27,11 @@ struct FRuntimeConvexCollisionSection_OLD
 {
 	TArray<FVector> VertexBuffer;
 	FBox BoundingBox;
-	//////////////////////////////////////////////////////////
-	/*TArray<TArray<uint32>> IndexBuffer;
-	TArray<TMap<uint32, int64>> NeighboursBuffer;*/
-	//TArray<Face> FacesBuffer;
+	//////////////////////////////////////////////////////////	
+	FBoxSphereBounds LocalBounds;
 	TArray<int32> IndexBuffer;
+	TArray<FPlane> Planes;
+	FVector Centroid;
 	//////////////////////////////////////////////////////////
 
 	friend FArchive& operator <<(FArchive& Ar, FRuntimeConvexCollisionSection_OLD& Section)
@@ -39,10 +39,10 @@ struct FRuntimeConvexCollisionSection_OLD
 		Ar << Section.VertexBuffer;
 		Ar << Section.BoundingBox;
 		////////////////////////////////////////////////////////
-		/*Ar << Section.IndexBuffer;
-		Ar << Section.NeighboursBuffer;*/
-		//Ar << Section.FacesBuffer;
+		Ar << Section.LocalBounds;
 		Ar << Section.IndexBuffer;
+		Ar << Section.Planes;
+		Ar << Section.Centroid;
 		////////////////////////////////////////////////////////
 		return Ar;
 	}

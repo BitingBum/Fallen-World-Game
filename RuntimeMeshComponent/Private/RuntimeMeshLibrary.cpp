@@ -18,17 +18,17 @@
 ///////////////////////////////////////////////////////////////////////
 //#include "Object.h"
 
-#include <fstream>
-
-#include <sstream>
-using std::stringstream;
-#include <iostream>
-#include <iomanip>
-
-using std::cout;
-using std::endl;
-using std::cin;
-using namespace std;
+//#include <fstream>
+//
+//#include <sstream>
+//using std::stringstream;
+//#include <iostream>
+//#include <iomanip>
+//
+//using std::cout;
+//using std::endl;
+//using std::cin;
+//using namespace std;
 ///////////////////////////////////////////////////////////////////////
 #define LOCTEXT_NAMESPACE "RuntimeMeshLibrary"
 
@@ -474,11 +474,14 @@ void URuntimeMeshLibrary::CopyCollisionFromStaticMesh(UStaticMesh* StaticMesh, U
 					fout << s1;
 					if (j < 2)
 						fout << ", ";
+
+					delete[] s1;
 				}
 				fout << "));";
 				fout << "\r\n";
 			}
-			fout.close();*/
+			fout.close();
+			delete[] s;*/
 			
 
 			RuntimeMesh->AddConvexCollisionSection(MeshConvex.VertexData);

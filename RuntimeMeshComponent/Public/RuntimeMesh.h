@@ -92,8 +92,10 @@ private:
 	UPROPERTY(EditAnywhere, Category = "RuntimeMesh")
 	ERuntimeMeshCollisionCookingMode CollisionMode;
 
+//public:
 	/** Collision data */
 	UPROPERTY(Instanced)
+	//UPROPERTY(EditAnywhere, transient, duplicatetransient, Instanced, Category = RuntimeMesh)
 	UBodySetup* BodySetup;
 
 	/** Queue of pending collision cooks */
@@ -505,6 +507,8 @@ public:
 		GetRuntimeMeshData()->ClearMeshSection(SectionIndex);
 	}
 
+	
+
 	/** Clear all mesh sections and reset to empty state */
 	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
 	void ClearAllMeshSections()
@@ -546,6 +550,14 @@ public:
 	{
 		check(IsInGameThread());
 		return Materials;
+	}
+
+	UMaterialInterface* GetMaterial(int32 MaterialIndex)
+	{
+		check(IsInGameThread());	
+		if (Materials.Num() && MaterialIndex >INDEX_NONE && MaterialIndex < Materials.Num())
+			return Materials[MaterialIndex];
+		return nullptr;
 	}
 
 	/** Gets the bounding box of a specific section */
@@ -615,6 +627,42 @@ public:
 		return GetRuntimeMeshData()->GetNumSections();
 	}
 
+	/** Returns sections at specified index */
+	/*UFUNCTION()
+	FRuntimeMeshSectionPtr GetMeshSection(int32 SectionIndex) 
+	{
+		check(IsInGameThread());
+		return GetRuntimeMeshData()->GetMeshSection(SectionIndex);
+	}*/
+
+	/** Returns overall number of vertices for this component */
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+		int32 GetNumVertices() 
+	{
+		check(IsInGameThread());
+		int32 OverallVerticesCount = 0;
+		for (int32 i = 0; i < GetNumSections(); i++)
+		{
+			OverallVerticesCount += GetSectionReadonly(i)->NumVertices();
+			//OverallVerticesCount += GetMeshSection(i)->GetNumVertices();
+		}
+		return OverallVerticesCount;
+	}
+
+	/** Returns overall number of triangles for this component */
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+		int32 GetNumTriangles() 
+	{
+		check(IsInGameThread());
+		int32 OverallTriangleCount = 0;
+		for (int32 i = 0; i < GetNumSections(); i++)
+		{
+			OverallTriangleCount += GetSectionReadonly(i)->NumIndices() / 3;
+			//OverallTriangleCount += GetMeshSection(i)->GetNumIndices() / 3;
+		}
+		return OverallTriangleCount;
+	}
+
 	/** Returns whether a particular section currently exists */
 	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
 	bool DoesSectionExist(int32 SectionIndex) const
@@ -654,6 +702,7 @@ public:
 		GetRuntimeMeshData()->ClearMeshCollisionSection(CollisionSectionIndex);
 	}
 
+	
 	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
 	void ClearAllMeshCollisionSections()
 	{
@@ -661,15 +710,180 @@ public:
 		GetRuntimeMeshData()->ClearAllMeshCollisionSections();
 	}
 
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////My Modifications////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	
-	/*int32 AddConvexCollisionSection(FKConvexElem ConvexShape)
+	/** Returns number of convex collision sections currently created for this component */
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	int32 GetNumConvexCollisionSections() const
 	{
 		check(IsInGameThread());
-		return GetRuntimeMeshData()->AddConvexCollisionSection(ConvexShape);
+		return GetRuntimeMeshData()->GetNumConvexCollisionSections();
 	}
-*/
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/** Move multiple number of sections and convex collision sections of the procedural mesh to another procedural mesh. **/
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void MoveMeshSectionsAndConvexCollisionsTo(const TArray<int32>& SourceSectionsIds, const TArray<int32>& SourceCollisionSectionsIds, URuntimeMesh* TargetMesh, bool bKeepSectionsOrder = true, bool bClearSourceSections = false)
+	{
+		check(IsInGameThread());
+		if (TargetMesh)
+		{
+			FRuntimeMeshDataRef SourceMeshDataRef = GetRuntimeMeshData();
+
+			TArray<FRuntimeMeshSectionPtr> SourceSectionsToMove;
+			TArray<FRuntimeMeshCollisionConvexMesh> SourceConvexCollisionSectionsToMove;			
+
+			for (int32 i = 0; i < SourceSectionsIds.Num(); i++)
+			{
+				SourceSectionsToMove.Add(SourceMeshDataRef->GetMeshSection(SourceSectionsIds[i]));
+			}
+
+			for (int32 i = 0; i < SourceCollisionSectionsIds.Num(); i++)
+			{
+				SourceConvexCollisionSectionsToMove.Add(*SourceMeshDataRef->GetConvexCollisionSection(SourceCollisionSectionsIds[i]));
+			}
+
+			if(bKeepSectionsOrder)
+				TargetMesh->GetRuntimeMeshData()->MoveMeshSectionsAndConvexCollisions(SourceSectionsIds, SourceCollisionSectionsIds, SourceSectionsToMove, SourceConvexCollisionSectionsToMove);
+			else
+				TargetMesh->GetRuntimeMeshData()->MoveMeshSectionsAndConvexCollisions(SourceSectionsToMove, SourceConvexCollisionSectionsToMove);
+
+			if (bClearSourceSections)
+			{
+				GetRuntimeMeshData()->ClearMeshSectionsAndConvexCollisions(SourceSectionsIds, SourceCollisionSectionsIds);
+			}
+		}
+	}
+
+	/** Move convex collision section of the procedural mesh to another procedural mesh. **/
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void MoveConvexCollisionSectionTo(int32 SourceSectionId, int32 TargetSectionId, URuntimeMesh* TargetMesh, bool bClearSourceSection = false)
+	{
+		check(IsInGameThread());
+
+		if (TargetMesh)
+		{
+			FRuntimeMeshDataRef SourceMeshDataRef = GetRuntimeMeshData();
+
+			FRuntimeMeshCollisionConvexMesh& SourceConvexCollisionSection = SourceMeshDataRef->GetConvexCollisionSectionPointer(SourceSectionId);
+
+			TargetMesh->GetRuntimeMeshData()->MoveConvexCollisionSection(TargetSectionId, SourceConvexCollisionSection);
+
+			if (bClearSourceSection)
+			{
+				GetRuntimeMeshData()->RemoveConvexCollisionSection(SourceSectionId);
+			}
+		}
+	}
+
+	/** Move section of the procedural mesh to another procedural mesh. **/
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void CopyMeshSectionTo(int32 SourceSectionId, int32 TargetSectionId, URuntimeMesh* TargetMesh, bool bClearSourceSection = false)
+	{
+		check(IsInGameThread());
+
+		if (TargetMesh)
+		{
+			FRuntimeMeshDataRef SourceMeshDataRef = GetRuntimeMeshData();
+
+			FRuntimeMeshSectionPtr SourceSection = SourceMeshDataRef->GetMeshSection(SourceSectionId);
+
+			TargetMesh->GetRuntimeMeshData()->CopyMeshSection(TargetSectionId, SourceSection);
+
+			if (bClearSourceSection)
+			{
+				GetRuntimeMeshData()->ClearMeshSection(SourceSectionId);
+			}
+		}
+	}
+
+	/** Move section of the procedural mesh to another procedural mesh. **/
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void MoveMeshSectionTo(int32 SourceSectionId, int32 TargetSectionId, URuntimeMesh* TargetMesh, bool bClearSourceSection = false)
+	{	
+		check(IsInGameThread());				
+
+		if (TargetMesh)
+		{
+			FRuntimeMeshDataRef SourceMeshDataRef = GetRuntimeMeshData();
+
+			FRuntimeMeshSectionPtr SourceSection = SourceMeshDataRef->GetMeshSection(SourceSectionId);
+
+			TargetMesh->GetRuntimeMeshData()->MoveMeshSection(TargetSectionId, SourceSection);
+
+			if (bClearSourceSection)
+			{
+				GetRuntimeMeshData()->ClearMeshSection(SourceSectionId);
+			}
+		}
+	}
+
+	/** Clear multiple number of sections of the procedural mesh. **/
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void ClearMeshSections(const TArray<int32>& SectionIndices)
+	{
+		check(IsInGameThread());
+		GetRuntimeMeshData()->ClearMeshSections(SectionIndices);
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void ClearMeshConvexCollisionSections(const TArray<int32>& CollisionSectionIndices)
+	{
+		check(IsInGameThread());
+		GetRuntimeMeshData()->ClearMeshConvexCollisionSections(CollisionSectionIndices);
+	}
+
+	/** Clear multiple number of sections and convex collision sections of the procedural mesh. **/
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void ClearMeshSectionsAndConvexCollisions(const TArray<int32>& SectionIndices, const TArray<int32>& CollisionSectionIndices)
+	{
+		check(IsInGameThread());
+		GetRuntimeMeshData()->ClearMeshSectionsAndConvexCollisions(SectionIndices, CollisionSectionIndices);
+	}
+
+
+	
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	int32 AddConvexCollisionSectionAtLast(const FRuntimeMeshCollisionConvexMesh& ConvexMesh)
+	{
+		check(IsInGameThread());
+		return GetRuntimeMeshData()->AddConvexCollisionSection(ConvexMesh);
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void AddConvexCollisionSectionAtIndex(const FRuntimeMeshCollisionConvexMesh& ConvexMesh, int32 Index)
+	{
+		check(IsInGameThread());
+		GetRuntimeMeshData()->AddConvexCollisionSection(ConvexMesh, Index);		
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void AddConvexCollisionSectionsAtIndices(const TArray<FRuntimeMeshCollisionConvexMesh>& ConvexMeshes, const TArray<int32>& Indices)
+	{
+		check(IsInGameThread());
+		GetRuntimeMeshData()->AddConvexCollisionSections(ConvexMeshes, Indices);
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void AddConvexCollisionSections(const TArray<FRuntimeMeshCollisionConvexMesh>& ConvexMeshes)
+	{
+		check(IsInGameThread());
+		GetRuntimeMeshData()->AddConvexCollisionSections(ConvexMeshes);
+	}
+
+
+	/** Control visibility of all sections */
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void SetAllMeshSectionsVisible(bool bNewVisibility)
+	{
+		check(IsInGameThread());
+		GetRuntimeMeshData()->SetAllMeshSectionsVisible(bNewVisibility);
+	}
+	
+	void SendAllSectionsPropertiesUpdate();
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////My Modifications////////////////////////////////////////////////////////////////////////////
 
 	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
 	int32 AddConvexCollisionSection(TArray<FVector> ConvexVerts)
@@ -713,7 +927,7 @@ public:
 	{
 		check(IsInGameThread());
 		GetRuntimeMeshData()->SetCollisionConvexMeshes(ConvexMeshes, Indices);
-	}
+	}	
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -251,6 +251,15 @@ class RUNTIMEMESHCOMPONENT_API FRuntimeMeshSection
 
 	//	TUniquePtr<FRuntimeMeshLockProvider> SyncRoot;
 public:
+	FSectionPositionVertexBuffer GetPositionBuffer()		{ return PositionBuffer; }
+	FSectionTangentsVertexBuffer GetTangentsBuffer()		{ return TangentsBuffer; }
+	FSectionUVsVertexBuffer		 GetUVsBuffer()				{ return UVsBuffer; }
+	FSectionColorVertexBuffer    GetColorBuffer()			{ return ColorBuffer; }
+	FSectionIndexBuffer			 GetIndexBuffer()			{ return IndexBuffer; }
+	FSectionIndexBuffer			 GetAdjacencyIndexBuffer()  { return AdjacencyIndexBuffer; }
+	
+
+public:
 	FRuntimeMeshSection(FArchive& Ar);
 	FRuntimeMeshSection(bool bInUseHighPrecisionTangents, bool bInUseHighPrecisionUVs, int32 InNumUVs, bool b32BitIndices, EUpdateFrequency InUpdateFrequency/*, FRuntimeMeshLockProvider* InSyncRoot*/);
 

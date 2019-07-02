@@ -409,6 +409,7 @@ public:
 	void SetNumIndices(int32 NewNum);
 	int32 AddIndex(int32 NewIndex);
 	int32 AddTriangle(int32 Index0, int32 Index1, int32 Index2);
+	int32 NumTriangles() const;
 
 	int32 GetIndex(int32 Index) const;
 	void SetIndex(int32 Index, int32 Value);

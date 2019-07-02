@@ -132,7 +132,15 @@ struct EdgeIndices
 
 struct SlicedEdge:EdgeIndices
 {
-	int32 FirstHalfIndex, OtherHalfIndex;
+	/**
+	Index of slicesoint in first half of sliced mesh
+	**/
+	int32 FirstHalfIndex;
+
+	/**
+	Index of slicepoint in other half of sliced mesh
+	**/
+	int32 OtherHalfIndex;
 	
 };
 
@@ -216,6 +224,12 @@ void VerticesAndIndicesCorrection(TArray<FVector>& Vertices, TArray<Face>& Faces
 bool HasExcessVerts(const TArray <uint8>& ExcessIndices);
 
 void WriteVertices(const TArray<FVector>& Vertices, char* FileName = "Vertices.txt");
+
+void WriteIndices(const TArray<int32>& Indices, char* FileName = "VIndices.txt");
+
+void WritePlane(const FPlane& SlicePlaneFlipped, char* FileName = "VPlane.txt");
+
+bool EdgeAlreadySliced(TArray<SlicedEdge>& SlicedEdges, SlicedEdge& InEdge);
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 

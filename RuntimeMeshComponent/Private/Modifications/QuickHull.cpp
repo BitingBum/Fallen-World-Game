@@ -63,62 +63,51 @@ bool Tri_Is_Adj_To_Plane_In_Edge(int32* SlicedV[3], const float PlaneDist[3], TA
 }
 
 
+bool CheckTriangle(FPlane& Triangle, const FPlane& SlicePlane)
+{
+	float dx = Triangle.X - SlicePlane.X;
+	TryTruncateFloatToZero(dx);
+	float dy = Triangle.Y - SlicePlane.Y;
+	TryTruncateFloatToZero(dy);
+	float dz = Triangle.Z - SlicePlane.Z;
+	TryTruncateFloatToZero(dz);
+	float ddist = Triangle.W - SlicePlane.W;
+	TryTruncateFloatToZero(ddist);
+
+	return dx == 0 && dy == 0 && dz == 0 && ddist == 0;
+}
+
 /**
 Triangulating Clip Edges
-If NoCentroid - sort them, remove collinear edges and build triangles only on ClipEdges's vertices
-Otherwise - search centroid of ClipEdges's vertices, add it to Indices and Vertices and build triangles from Centroid and ClipEdges
+Search Centroid of ClipEdges's vertices, add it to Indices and Vertices and build triangles from Centroid and ClipEdges
 **/
-void TriangulateClipEdges(TArray<EdgeIndices>& ClipEdges, TArray<int32>& Indices, TArray<FVector>& Vertices, bool NoCentroid = true)
+void TriangulateClipEdges(TArray<EdgeIndices>& ClipEdges, TArray<int32>& Indices, TArray<FVector>& Vertices)
 {
-	TArray<int32> FinalIndices;
-	//Sort ClipEdges
-	for (int32 i = 0; i < ClipEdges.Num() - 2; i++)
-	{
-		if (ClipEdges[i].Index1 != ClipEdges[i + 1].Index0)
+	if (ClipEdges.Num() >= 3)
+	{		
+		FVector Centroid = FVector(0,0,0);
+		for (int32 i = 0; i < ClipEdges.Num(); i++)
 		{
-			for (int32 j = i + 2; j < ClipEdges.Num(); j++)
-			{
-				if (ClipEdges[i].Index1 == ClipEdges[j].Index0)
-				{
-					Swap(ClipEdges[i + 1], ClipEdges[j]);
-					break;
-				}
-			}
+			Centroid += Vertices[ClipEdges[i].Index0];
+			Centroid += Vertices[ClipEdges[i].Index1];
 		}
-	}
-	//Remove Collinear ClipEdges
-	for (int32 i = 0; i < ClipEdges.Num() - 1; i++)
-	{
-		if (PointsAreOnOneLine(Vertices[ClipEdges[i].Index0], Vertices[ClipEdges[i].Index1], Vertices[ClipEdges[i + 1].Index1]))
+		Centroid /= (ClipEdges.Num() * 2);
+
+		int32 CentroidIndex = Vertices.Add(Centroid);
+
+		for (int32 i = 0; i < ClipEdges.Num(); i++)
 		{
-			ClipEdges[i].Index1 = ClipEdges[i + 1].Index1;
-			ClipEdges.RemoveAt(i + 1);
-			i--;
+			Indices.Add(CentroidIndex);
+			Indices.Add(ClipEdges[i].Index0);
+			Indices.Add(ClipEdges[i].Index1);
 		}
-	}
-	//Check last and first edges for collinearity
-
-	if (PointsAreOnOneLine(Vertices[ClipEdges.Last().Index0], Vertices[ClipEdges.Last().Index1], Vertices[ClipEdges[0].Index1]))
-	{
-		ClipEdges[0].Index0 = ClipEdges.Last().Index0;
-		ClipEdges.RemoveAt(ClipEdges.Num()-1);		
-	}
-	 
-	//Fill FinalIndices
-	for (int32 i = 0; i < ClipEdges.Num(); i++)
-	{
-		FinalIndices.Add(ClipEdges[i].Index0);
-	}
-
-	int32 NumFinalIndices = FinalIndices.Num();
-	for (int32 Index = 2; Index < NumFinalIndices; Index++)
-	{
-		Indices.Add(FinalIndices[0]);
-		Indices.Add(FinalIndices[Index - 1]);
-		Indices.Add(FinalIndices[Index]);
 	}
 }
 
+/**
+Check if InEdge is sliced 
+If it is - assign InEdge as found edge from SlicedEdges
+**/
 bool EdgeAlreadySliced(TArray<SlicedEdge>& SlicedEdges, SlicedEdge& InEdge)
 {
 	for (int32 i = 0; i < SlicedEdges.Num(); i++)
@@ -150,7 +139,7 @@ bool SliceConvexHull(const TArray<FVector>& OriginVertices, const TArray<int32>&
 
 	/**
 	Array of sliced original edges for prevent duplicates appearance in Vertices and Indices arrays	
-	**/
+	**/	
 	TArray<SlicedEdge> SlicedEdges;
 	bool EdgeIsSlicedAlready;
 
@@ -175,7 +164,7 @@ bool SliceConvexHull(const TArray<FVector>& OriginVertices, const TArray<int32>&
 			int32 SlicedVertIndex = FirstHalfVertices.Add(BaseVert);
 			BaseToSlicedVertIndex.Add(BaseVertIndex, SlicedVertIndex);
 		}
-		// Or add to other half if desired
+		// Add to other half if desired
 		if (VertDistance[BaseVertIndex] >= 0.f && bCreateOtherHalf)
 		{
 			int32 SlicedVertIndex = OtherHalfVertices.Add(BaseVert);
@@ -267,9 +256,9 @@ bool SliceConvexHull(const TArray<FVector>& OriginVertices, const TArray<int32>&
 				}
 
 				
-				int32 NextVert = (EdgeIdx + 1) % 3;
+				int32 NextVert = (ThisVert + 1) % 3;
 
-				bool VertOnSlicePlane = (SlicedV[EdgeIdx] != nullptr && SlicedOtherV[EdgeIdx] != nullptr);
+				bool VertOnSlicePlane = (SlicedV[ThisVert] != nullptr && SlicedOtherV[ThisVert] != nullptr);
 				bool NextVertOnSlicePlane = (SlicedV[NextVert] != nullptr && SlicedOtherV[NextVert] != nullptr);
 
 				// If vert is on SlicePlane add it to both ClipEdges
@@ -355,7 +344,7 @@ bool SliceConvexHull(const TArray<FVector>& OriginVertices, const TArray<int32>&
 							
 						//If ThisVert is in front and NextVert is behind of SlicePlane - NewOtherClipEdge Second Index is OtherInterpVertIndex
 						//Otherwise NewOtherClipEdge First Index is OtherInterpVertIndex
-						if (SlicedV[EdgeIdx] == nullptr)
+						if (SlicedOtherV[EdgeIdx] != nullptr)
 							NewOtherClipEdge.Index1 = OtherIntersVertIndex;
 						else
 							NewOtherClipEdge.Index0 = OtherIntersVertIndex;
@@ -404,7 +393,10 @@ bool SliceConvexHull(const TArray<FVector>& OriginVertices, const TArray<int32>&
 	//CheckEdges(OtherClipEdges);
 	TriangulateClipEdges(FirstClipEdges, FirstHalfIndices, FirstHalfVertices);
 	if (bCreateOtherHalf)
+	{
+		FPlane SlicePlaneF = SlicePlane.Flip();
 		TriangulateClipEdges(OtherClipEdges, OtherHalfIndices, OtherHalfVertices);
+	}
 	return true;
 }
 
@@ -1735,7 +1727,82 @@ void WriteVertices(const TArray<FVector>& Vertices, char* FileName)
 	fout.close();
 }
 
+void WriteIndices(const TArray<int32>& Indices, char* FileName)
+{
 
+	stringstream iostr;
+	char *s;
+	s = new char[50];
+	iostr << FileName;
+	iostr >> s;
+	ofstream fout;
+	fout.open(iostr.str());
+
+	int32 Temp;
+
+	for (int i = 0; i < Indices.Num(); i++)
+	{
+
+		fout << "ConvexIndices.Add(";
+		Temp = Indices[i];
+		
+		stringstream iostr;
+		char *s1;
+		s1 = new char[50];
+		iostr << Temp;
+		iostr >> s1;
+
+		fout << s1;
+			
+		fout << ");";
+		fout << "\r\n";
+	}
+	fout.close();
+}
+
+void WritePlane(const FPlane& SlicePlaneFlipped, char* FileName)
+{
+	stringstream iostr;
+	char *s;
+	s = new char[50];
+	iostr << FileName;
+	iostr >> s;
+	ofstream fout;
+	fout.open(iostr.str());
+
+	stringstream iostr1;
+	char *s1;
+	s1 = new char[100];
+	iostr1 << SlicePlaneFlipped.X;
+	iostr1 >> s1;
+	fout << s1;	
+	fout << ", ";
+
+	stringstream iostr2;
+	char *s2;
+	s2 = new char[100];
+	iostr2 << SlicePlaneFlipped.Y;
+	iostr2 >> s2;
+	fout << s2;
+	fout << ", ";
+
+	stringstream iostr3;
+	char *s3;
+	s3 = new char[100];
+	iostr3 << SlicePlaneFlipped.Z;
+	iostr3 >> s3;
+	fout << s3;
+	fout << ", ";
+
+	stringstream iostr4;
+	char *s4;
+	s4 = new char[100];
+	iostr4 << SlicePlaneFlipped.W;
+	iostr4 >> s4;
+	fout << s4;	
+	
+	fout.close();
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

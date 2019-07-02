@@ -30,6 +30,8 @@ private:
 
 public:
 
+	URuntimeMeshComponent();
+	
 	URuntimeMeshComponent(const FObjectInitializer& ObjectInitializer);
 
 	/** Clears the geometry for ALL collision only sections */
@@ -433,6 +435,8 @@ public:
 		}
 	}
 
+	
+
 	/** Clear all mesh sections and reset to empty state */
 	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
 	void ClearAllMeshSections()
@@ -592,7 +596,7 @@ public:
 	void ClearMeshCollisionSection(int32 CollisionSectionIndex)
 	{
 		GetOrCreateRuntimeMesh()->ClearMeshCollisionSection(CollisionSectionIndex);
-	}
+	}	
 
 	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
 	void ClearAllMeshCollisionSections()
@@ -600,7 +604,139 @@ public:
 		GetOrCreateRuntimeMesh()->ClearAllMeshCollisionSections();
 	}
 
+	////////////////////////////////////////////////////////////////////////My Modifications///////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	/** Returns number of sections currently created for this component */
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	int32 GetNumConvexCollisionSections() const
+	{
+		if (URuntimeMesh* Mesh = GetRuntimeMesh())
+		{
+			return Mesh->GetNumConvexCollisionSections();
+		}
+		return 0;
+	}
+
+	/** Move multiple number of sections and convex collision sections of the procedural mesh to another procedural mesh. **/
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void MoveMeshSectionsAndConvexCollisionsTo(const TArray<int32>& SourceSectionsIds, const TArray<int32>& SourceCollisionSectionsIds, URuntimeMeshComponent* TargetComponent, bool bKeepSectionsOrder = true, bool bClearSourceSections = false)
+	{
+		URuntimeMesh* Mesh = GetRuntimeMesh();
+		URuntimeMesh* TargetMesh = TargetComponent->GetOrCreateRuntimeMesh();
+		if (Mesh && TargetMesh)
+		{
+			Mesh->MoveMeshSectionsAndConvexCollisionsTo(SourceSectionsIds, SourceCollisionSectionsIds, TargetMesh, bKeepSectionsOrder, bClearSourceSections);
+		}
+	}
+
+	/** Move convex collision section of the procedural mesh to another procedural mesh. **/
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void MoveConvexCollisionSectionTo(int32 SourceSectionId, int32 TargetSectionId, URuntimeMeshComponent* TargetComponent, bool bClearSourceSection = false)
+	{
+		URuntimeMesh* Mesh = GetRuntimeMesh();
+		URuntimeMesh* TargetMesh = TargetComponent->GetOrCreateRuntimeMesh();
+		if (Mesh && TargetMesh)
+		{
+			Mesh->MoveConvexCollisionSectionTo(SourceSectionId, TargetSectionId, TargetMesh, bClearSourceSection);
+		}
+	}
+
+
+	/** Copy section of the procedural mesh to another procedural mesh. **/
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void CopyMeshSectionTo(int32 SourceSectionId, int32 TargetSectionId, URuntimeMeshComponent* TargetComponent, bool bClearSourceSection = false)
+	{
+		URuntimeMesh* Mesh = GetRuntimeMesh();
+		URuntimeMesh* TargetMesh = TargetComponent->GetOrCreateRuntimeMesh();
+		if (Mesh && TargetMesh)
+		{
+			Mesh->CopyMeshSectionTo(SourceSectionId, TargetSectionId, TargetMesh, bClearSourceSection);
+		}
+	}
+
+	/** Move section of the procedural mesh to another procedural mesh. **/
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void MoveMeshSectionTo(int32 SourceSectionId, int32 TargetSectionId, URuntimeMeshComponent* TargetComponent, bool bClearSourceSection = false)
+	{
+		URuntimeMesh* Mesh = GetRuntimeMesh();
+		URuntimeMesh* TargetMesh = TargetComponent->GetOrCreateRuntimeMesh();
+		if (Mesh && TargetMesh)
+		{
+			Mesh->MoveMeshSectionTo(SourceSectionId, TargetSectionId, TargetMesh, bClearSourceSection);
+		}
+	}
+
+
+	/** Clear multiple number of sections of the procedural mesh. **/
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void ClearMeshSections(const TArray<int32>& SectionIndices)
+	{
+		if (URuntimeMesh* Mesh = GetRuntimeMesh())
+		{
+			Mesh->ClearMeshSections(SectionIndices);
+		}
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void ClearMeshConvexCollisionSections(TArray<int32>& CollisionSectionIndices)
+	{
+		if (URuntimeMesh* Mesh = GetRuntimeMesh())
+		{
+			Mesh->ClearMeshConvexCollisionSections(CollisionSectionIndices);
+		}
+	}
+
+	/** Clear multiple number of sections and convex collision sections of the procedural mesh. **/
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void ClearMeshSectionsAndConvexCollisions(const TArray<int32>& SectionIndices, const TArray<int32>& CollisionSectionIndices)
+	{
+		if (URuntimeMesh* Mesh = GetRuntimeMesh())
+		{
+			Mesh->ClearMeshSectionsAndConvexCollisions(SectionIndices, CollisionSectionIndices);
+		}
+	}
+
+	
+
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	int32 AddConvexCollisionSectionAtLast(const FRuntimeMeshCollisionConvexMesh& ConvexMesh)
+	{
+		return GetOrCreateRuntimeMesh()->AddConvexCollisionSectionAtLast(ConvexMesh);
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void AddConvexCollisionSectionAtIndex(const FRuntimeMeshCollisionConvexMesh& ConvexMesh, int32 Index)
+	{
+		GetOrCreateRuntimeMesh()->AddConvexCollisionSectionAtIndex(ConvexMesh, Index);
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void AddConvexCollisionSectionsAtIndices(const TArray<FRuntimeMeshCollisionConvexMesh>& ConvexMeshes, const TArray<int32>& Indices)
+	{
+		GetOrCreateRuntimeMesh()->AddConvexCollisionSectionsAtIndices(ConvexMeshes, Indices);
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void AddConvexCollisionSections(const TArray<FRuntimeMeshCollisionConvexMesh>& ConvexMeshes)
+	{
+		GetOrCreateRuntimeMesh()->AddConvexCollisionSections(ConvexMeshes);
+	}
+
+	/** Control visibility of all sections */
+	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
+	void SetAllMeshSectionsVisible(bool bNewVisibility)
+	{
+		if (URuntimeMesh* Mesh = GetRuntimeMesh())
+		{
+			Mesh->SetAllMeshSectionsVisible(bNewVisibility);
+		}
+	}
+
+	void SendAllSectionsPropertiesUpdate();
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////My Modifications///////////////////////////////////////////////////////////////
 
 	UFUNCTION(BlueprintCallable, Category = "Components|RuntimeMesh")
 	int32 AddConvexCollisionSection(TArray<FVector> ConvexVerts)
@@ -787,10 +923,10 @@ public:
 	//~ End UMeshComponent Interface.
 
 private:
-
 	/* Serializes this component */
 	virtual void Serialize(FArchive& Ar) override;
 
+//private:
 
 	/* Does post load fixups */
 	virtual void PostLoad() override;
@@ -824,12 +960,14 @@ private:
 #if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION < 21
 	UBodySetup* CreateNewBodySetup();
 	void FinishPhysicsAsyncCook(UBodySetup* FinishedBodySetup);
-
+	/////////////////////////////////////////////////////////////My Modification////////////////////////////////////////
+public:
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void UpdateCollision(bool bForceCookNow);
 #endif
-
-
-
+	/////////////////////////////////////////////////////////////My Modification////////////////////////////////////////
+private:
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	friend class URuntimeMesh;
 	friend class FRuntimeMeshComponentSceneProxy;
 	friend class FRuntimeMeshComponentLegacySerialization;

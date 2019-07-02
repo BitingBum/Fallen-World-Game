@@ -958,7 +958,7 @@ public:
 	}
 	
 	/** Clear a section of the procedural mesh. */
-	void ClearMeshSection(int32 SectionIndex);
+	void ClearMeshSection(int32 SectionIndex);	
 
 	/** Clear all mesh sections and reset to empty state */
 	void ClearAllMeshSections();
@@ -1006,19 +1006,92 @@ public:
 
 	void SetMeshCollisionSection(int32 CollisionSectionIndex, const TArray<FVector>& Vertices, const TArray<int32>& Triangles);
 
-	void ClearMeshCollisionSection(int32 CollisionSectionIndex);
+	void ClearMeshCollisionSection(int32 CollisionSectionIndex);	
 
 	void ClearAllMeshCollisionSections();
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//int32 AddConvexCollisionSection(FKConvexElem ConvexShape);
+	/////////////////////////////////////////////////////////////////////////////////////////////My Modifications//////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	void GetConvexCollisionSectionsKeys(TArray<int32>& Keys);
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	int32 AddConvexCollisionSection(const TArray<FVector>& ConvexVerts, const TArray<TArray<uint32>> IndexBuffer, const TArray<TMap<uint32, int64>> NeighboursBuffer);
+	int32 GetNumConvexCollisionSections() const;
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	static FVector CalculateCentroid(const TArray<FVector>& VertexBuffer);
+
+	void MoveMeshSectionsAndConvexCollisions(const TArray<int32>& SectionIndices, const TArray<int32>& CollisionSectionIndices, TArray<FRuntimeMeshSectionPtr>& SourceSectionsToMove, TArray<FRuntimeMeshCollisionConvexMesh>& SourceConvexCollisionSectionsToMove);
+
+	void MoveMeshSectionsAndConvexCollisions(TArray<FRuntimeMeshSectionPtr>& SourceSectionsToMove, TArray<FRuntimeMeshCollisionConvexMesh>& SourceConvexCollisionSectionsToMove);
+
+	void MoveConvexCollisionSection(int32 CollisionSectionId, FRuntimeMeshCollisionConvexMesh& SourceConvexCollisionSection);
+
+	void MoveConvexCollisionSection(FRuntimeMeshCollisionConvexMesh& SourceConvexCollisionSection);
+
+	void MoveConvexCollisionSections(const TArray<int32>& CollisionSectionIds, TArray<FRuntimeMeshCollisionConvexMesh>& SourceConvexCollisionSections);
+
+	void MoveConvexCollisionSections(TArray<FRuntimeMeshCollisionConvexMesh>& SourceConvexCollisionSections);
+
+	void CopyMeshSection(int32 SectionId, FRuntimeMeshSectionPtr SourceSectionData, bool bCreateCollision = false,
+		EUpdateFrequency UpdateFrequency = EUpdateFrequency::Average, ESectionUpdateFlags UpdateFlags = ESectionUpdateFlags::None);
+
+	void MoveMeshSection(int32 SectionId, FRuntimeMeshSectionPtr SourceSectionData, bool bCreateCollision = false,
+		EUpdateFrequency UpdateFrequency = EUpdateFrequency::Average, ESectionUpdateFlags UpdateFlags = ESectionUpdateFlags::None);
+
+	void MoveMeshSection(FRuntimeMeshSectionPtr SourceSectionData, bool bCreateCollision = false,
+		EUpdateFrequency UpdateFrequency = EUpdateFrequency::Average, ESectionUpdateFlags UpdateFlags = ESectionUpdateFlags::None);
+
+	void MoveMeshSections(const TArray<int32>& SectionIds, TArray<FRuntimeMeshSectionPtr>& SourceSectionsData, bool bCreateCollision = false,
+		EUpdateFrequency UpdateFrequency = EUpdateFrequency::Average, ESectionUpdateFlags UpdateFlags = ESectionUpdateFlags::None);
+
+	void MoveMeshSections(TArray<FRuntimeMeshSectionPtr>& SourceSectionsData, bool bCreateCollision = false,
+		EUpdateFrequency UpdateFrequency = EUpdateFrequency::Average, ESectionUpdateFlags UpdateFlags = ESectionUpdateFlags::None);
+
+	/** Clear multiple sections of the procedural mesh. */
+	void ClearMeshSections(const TArray<int32>& SectionIndices);
+
+	void ClearMeshConvexCollisionSections(const TArray<int32>& CollisionSectionIndices);
+
+	void ClearMeshSectionsAndConvexCollisions(const TArray<int32>& SectionIndices, const TArray<int32>& CollisionSectionIndices);
+
+
+
+	static void CreateConvexMeshFromVerts(FRuntimeMeshCollisionConvexMesh& ConvexMesh, TArray<FVector>& ConvexVerts);
+
+	static void CreateConvexMeshFromBuffers(FRuntimeMeshCollisionConvexMesh& ConvexMesh, const TArray<FVector>& VertexBuffer, const TArray<int32>& IndexBuffer, const TArray<FPlane>& Planes);
+
+	static void CreateConvexMeshFromBuffers(FRuntimeMeshCollisionConvexMesh& ConvexMesh, const TArray<FVector>& VertexBuffer, const TArray<int32>& IndexBuffer, const TArray<FPlane>& Planes, const FVector& Centroid);
+
+	static void CreateConvexMeshFromBuffersByMove(FRuntimeMeshCollisionConvexMesh& ConvexMesh, TArray<FVector>& VertexBuffer, FBox& BoundingBox, FBoxSphereBounds& LocalBounds, TArray<int32>& IndexBuffer, TArray<FPlane>& Planes);
+
+	static void CreateConvexMeshFromBuffersByMove(FRuntimeMeshCollisionConvexMesh& ConvexMesh, TArray<FVector>& VertexBuffer, FBox& BoundingBox, FBoxSphereBounds& LocalBounds, TArray<int32>& IndexBuffer, TArray<FPlane>& Planes, FVector& Centroid);
+
+
+	void MoveConvexMeshBuffers(FRuntimeMeshCollisionConvexMesh& TargetConvexMesh, FRuntimeMeshCollisionConvexMesh& SourceConvexMesh);
+
+	static void CreateConvexMeshFromBuffers(FRuntimeMeshCollisionConvexMesh& ConvexMesh, TArray<FVector>& VertexBuffer, const TArray<FPlane>& Planes);
+	
+	void AddConvexCollisionSection(const FRuntimeMeshCollisionConvexMesh& ConvexMesh, int32 Index);
+
+	int32 AddConvexCollisionSection(const FRuntimeMeshCollisionConvexMesh& ConvexMesh);
+
+	void AddConvexCollisionSections(const TArray<FRuntimeMeshCollisionConvexMesh>& ConvexMeshes, const TArray<int32>& Indices);
+
+	void AddConvexCollisionSections(const TArray<FRuntimeMeshCollisionConvexMesh>& ConvexMeshes);
+
+	/* Finishes creating a multiple sections, including entering it for batch updating, or updating the RT directly */
+	void CreateSectionsInternal(const TArray<int32>& SectionIds, ESectionUpdateFlags UpdateFlags);
+
+	///////////////////////////////////////////////////////////////////////////////////////////Sections Visibility/////////////////////////////////////////////////////////////////////////////////////
+
+	void SetAllMeshSectionsVisible(bool bNewVisibility);
+
+	void UpdateAllSectionsPropertiesInternal(bool bUpdateRequiresProxyRecreateIfStatic);
+
+	void SendAllSectionsPropertiesUpdate();
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////////My Modifications//////////////////////////////////////////////////////////////////////////////////////
+	
 
 	int32 AddConvexCollisionSection(TArray<FVector>& ConvexVerts);	
 
@@ -1028,12 +1101,8 @@ public:
 
 	void ClearConvexCollisionSections();
 
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//void SetCollisionConvexMeshes(const TArray<FKConvexElem>& ConvexMeshes);
+	/////////////////////////////////////////////////////////////////////////////////////////////My Modifications////////////////////////////
 	
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void SetCollisionConvexMeshes(const TArray<TArray<FVector>>& ConvexMeshes, const TArray<TArray<int32>>& Indices);
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1100,6 +1169,8 @@ private:
 
 	/* Finishes creating a section, including entering it for batch updating, or updating the RT directly */
 	void CreateSectionInternal(int32 SectionIndex, ESectionUpdateFlags UpdateFlags);
+
+	
 
 	/* Finishes updating a section, including entering it for batch updating, or updating the RT directly */
 	void UpdateSectionInternal(int32 SectionIndex, ERuntimeMeshBuffersToUpdate BuffersToUpdate, ESectionUpdateFlags UpdateFlags);
@@ -1206,6 +1277,10 @@ public:
 
 	/*Returns RuntimeMesh's Convex Collision Section At Specified Index*/
 	FRuntimeMeshCollisionConvexMesh* GetConvexCollisionSection(int32 Index);
+
+	const FRuntimeMeshCollisionConvexMesh& GetConvexCollisionSectionConstPointer(int32 Index);
+
+	FRuntimeMeshCollisionConvexMesh& GetConvexCollisionSectionPointer(int32 Index);
 
 	/*Returns TMap Of RuntimeMesh's Convex Collision Sections*/
 	TMap<int32, FRuntimeMeshCollisionConvexMesh> GetConvexCollisionSections();

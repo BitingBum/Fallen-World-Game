@@ -27,31 +27,49 @@ struct RUNTIMEMESHCOMPONENT_API FRuntimeMeshCollisionSection
 	}
 };
 
+
+
+USTRUCT(BlueprintType)
 struct RUNTIMEMESHCOMPONENT_API FRuntimeMeshCollisionConvexMesh
 {
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TArray<FVector> VertexBuffer;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	FBox BoundingBox;
 	/////////////////////////////////////////////////////////////
-	/*TArray<TArray<uint32>> IndexBuffer;
-	TArray<TMap<uint32, int64>> NeighboursBuffer;*/
-	//TArray<Face> FacesBuffer;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	FBoxSphereBounds LocalBounds;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TArray<int32> IndexBuffer;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	TArray<FPlane> Planes;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	FVector Centroid;
 	/////////////////////////////////////////////////////////////
 
 	friend FArchive& operator <<(FArchive& Ar, FRuntimeMeshCollisionConvexMesh& Section)
 	{
 		Ar << Section.VertexBuffer;
 		Ar << Section.BoundingBox;
-		/////////////////////////////////////////////////////////////
-		/*Ar << Section.IndexBuffer;
-		Ar << Section.NeighboursBuffer;*/
-		//Ar << Section.FacesBuffer;
+		/////////////////////////////////////////////////////////////	
+		Ar << Section.LocalBounds;
 		Ar << Section.IndexBuffer;
+		Ar << Section.Planes;
+		Ar << Section.Centroid;
 		/////////////////////////////////////////////////////////////
 		return Ar;
 	}
 };
 
+using FRuntimeMeshCollisionConvexMeshRef = TSharedRef<FRuntimeMeshCollisionConvexMesh, ESPMode::ThreadSafe>;
+using FRuntimeMeshCollisionConvexMeshPtr = TSharedPtr<FRuntimeMeshCollisionConvexMesh, ESPMode::ThreadSafe>;
 
 USTRUCT(BlueprintType)
 struct RUNTIMEMESHCOMPONENT_API FRuntimeMeshCollisionSphere

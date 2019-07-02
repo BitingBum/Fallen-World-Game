@@ -212,7 +212,7 @@ void URuntimeMeshSlicer::SliceConvexElem(const FKConvexElem& InConvex, const FPl
 ///////////////////////////////////////////////////////////////////////////SliceConvexElem Overloaded////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
+void CheckSlice();
 
 
 void URuntimeMeshSlicer::SliceConvexElem(FRuntimeMeshCollisionConvexMesh* ConvexSection, const FPlane& SlicePlane,
@@ -221,6 +221,7 @@ void URuntimeMeshSlicer::SliceConvexElem(FRuntimeMeshCollisionConvexMesh* Convex
 										bool bCreateOtherHalf)
 {
 	
+	//CheckSlice();
 
 	FPlane SlicePlaneFlipped = SlicePlane.Flip();
 	//TruncPlane(SlicePlaneFlipped);
@@ -233,7 +234,17 @@ void URuntimeMeshSlicer::SliceConvexElem(FRuntimeMeshCollisionConvexMesh* Convex
 	TArray<FVector>& ConvexVertices = ConvexSection->VertexBuffer;
 	TArray<int32>& ConvexIndices = ConvexSection->IndexBuffer;
 
-	
+	/*WriteVertices(ConvexVertices, "VerticesBeforeSlice.txt");
+	WriteIndices(ConvexIndices, "VIndicesBeforeSlice.txt");
+
+	WritePlane(SlicePlaneFlipped, "VPlane.txt");*/
+
+	//Test
+	/*SlicePlaneFlipped = FPlane(FVector(ConvexVertices[45].X, ConvexVertices[45].Y, ConvexVertices[45].Z ),
+								FVector(ConvexVertices[19].X, ConvexVertices[19].Y, ConvexVertices[45].Z ),
+								FVector(0, 0, ConvexVertices[45].Z ));*/
+	//SlicePlaneFlipped = FPlane(-0.579618692, -0.694652677, 0.426027924, 42.9565506);
+
 	/*TArray<Face> Faces;
 	qh_quickhull3d(ConvexVertices, ConvexVertices.Num(), Faces,false);
 	WriteVertices(ConvexVertices);
@@ -253,6 +264,13 @@ void URuntimeMeshSlicer::SliceConvexElem(FRuntimeMeshCollisionConvexMesh* Convex
 		FirstHalfVertices, OtherHalfVertices,
 		FirstHalfIndices, OtherHalfIndices,
 		bCreateOtherHalf);
+
+	/*WriteVertices(FirstHalfVertices, "VerticesFirstHalf.txt");
+	WriteIndices(FirstHalfIndices, "VIndicesFirstHalf.txt");
+
+	WriteVertices(OtherHalfVertices, "VerticesOtherHalf.txt");
+	WriteIndices(OtherHalfIndices, "VIndicesOtherHalf.txt");*/
+
 	
 }
 
@@ -402,7 +420,7 @@ void URuntimeMeshSlicer::SliceRuntimeMeshConvexCollision(URuntimeMesh* InRuntime
 						OtherSlicedIndices.Add(OtherIndices);
 					}					
 
-					CreateMeshSectionFromVertsAndIndices(OutOtherHalf, OtherSlicedConvexVerts, OtherIndices);
+					//CreateMeshSectionFromVertsAndIndices(OutOtherHalf, OtherSlicedConvexVerts, OtherIndices);
 				}
 			}
 		}
@@ -501,7 +519,54 @@ void URuntimeMeshSlicer::SliceRuntimeMeshConvexCollision(URuntimeMesh* InRuntime
 //	}
 //}
 
-void URuntimeMeshSlicer::SliceRuntimeMeshSection(const FRuntimeMeshDataPtr& InRuntimeMesh, const FRuntimeMeshDataPtr& OutOtherHalf, int32 SectionIndex, const FPlane& SlicePlane, TArray<FUtilEdge3D>& ClipEdges)
+bool EqualClipEdges(const FUtilEdge3D& A, const FUtilEdge3D& B)
+{
+	return (A.V0 == B.V0 && A.V1 == B.V1) || (A.V0 == B.V1 && A.V1 == B.V0);
+}
+
+int32 AddUniqueClipEdge(TArray<FUtilEdge3D>& ClipEdges, FUtilEdge3D& NewEdge)
+{
+	int32 ClipEdgesNum = ClipEdges.Num();
+	for (int32 i = 0; i < ClipEdgesNum; i++)
+	{
+		if (EqualClipEdges(ClipEdges[i], NewEdge))
+			return i;
+	}
+	ClipEdges.Add(NewEdge);
+	return ClipEdgesNum;
+}
+
+/**
+Check If Triangle is adjacent to SlicePlane in edge and add this Edge to ClipEdges array
+**/
+bool Tri_Is_Adj_To_Plane_In_Edge(int32 BaseV[3], const float PlaneDist[3], TArray<FUtilEdge3D>& ClipEdges,
+	TUniquePtr<FRuntimeMeshScopedUpdater>& SourceMeshData, bool IsOtherHalf = false)
+{
+	for (int32 ThisVert = 0; ThisVert < 3; ThisVert++)
+	{
+		int32 NextVert = (ThisVert + 1) % 3;
+		if (PlaneDist[ThisVert] == 0.f && PlaneDist[NextVert] == 0.f)
+		{
+			FUtilEdge3D NewEdge;
+			/*if (!IsOtherHalf)
+			{*/
+				NewEdge.V0 = SourceMeshData->GetVertex(BaseV[ThisVert]).Position;
+				NewEdge.V1 = SourceMeshData->GetVertex(BaseV[NextVert]).Position;
+			/*}
+			else
+			{
+				NewEdge.V1 = SourceMeshData->GetVertex(BaseV[ThisVert]).Position;
+				NewEdge.V0 = SourceMeshData->GetVertex(BaseV[NextVert]).Position;
+			}*/
+			AddUniqueClipEdge(ClipEdges, NewEdge);
+			return true;
+		}
+	}
+	return false;
+}
+
+void URuntimeMeshSlicer::SliceRuntimeMeshSection(const FRuntimeMeshDataPtr& InRuntimeMesh, const FRuntimeMeshDataPtr& OutOtherHalf, int32 SectionIndex, const FPlane& SlicePlane,
+	TArray<FUtilEdge3D>& ClipEdges)
 {
 	bool bShouldCreateOtherHalf = OutOtherHalf.IsValid();
 
@@ -513,6 +578,12 @@ void URuntimeMeshSlicer::SliceRuntimeMeshSection(const FRuntimeMeshDataPtr& InRu
 	TMap<int32, int32> BaseToSlicedVertIndex;
 	TMap<int32, int32> BaseToOtherSlicedVertIndex;
 
+	/**
+	Array of sliced original edges for prevent duplicates appearance in Vertices and Indices arrays
+	**/
+	TArray<SlicedEdge> SlicedEdges;
+	bool EdgeIsSlicedAlready;
+
 	const int32 NumBaseVerts = SourceMeshData->NumVertices();
 
 	// Distance of each base vert from slice plane
@@ -522,13 +593,13 @@ void URuntimeMeshSlicer::SliceRuntimeMeshSection(const FRuntimeMeshDataPtr& InRu
 	// Build vertex buffer 
 	for (int32 BaseVertIndex = 0; BaseVertIndex < NumBaseVerts; BaseVertIndex++)
 	{
-		FRuntimeMeshAccessorVertex BaseVert = SourceMeshData->GetVertex(BaseVertIndex);
+		FRuntimeMeshAccessorVertex BaseVert = SourceMeshData->GetVertex(BaseVertIndex); 
 
 		// Calculate distance from plane
 		VertDistance[BaseVertIndex] = SlicePlane.PlaneDot(BaseVert.Position);
 
 		// See if vert is being kept in this section
-		if (VertDistance[BaseVertIndex] > 0.f)
+		if (VertDistance[BaseVertIndex] >= 0.f)
 		{
 			// Copy to sliced v buffer
 			int32 SlicedVertIndex = NewMeshData->AddVertex(BaseVert);
@@ -536,11 +607,10 @@ void URuntimeMeshSlicer::SliceRuntimeMeshSection(const FRuntimeMeshDataPtr& InRu
 			// Add to map
 			BaseToSlicedVertIndex.Add(BaseVertIndex, SlicedVertIndex);
 		}
-		// Or add to other half if desired
-		else if (bShouldCreateOtherHalf)
+		// Add to other half if desired
+		if (VertDistance[BaseVertIndex] <= 0.f && bShouldCreateOtherHalf)
 		{
 			int32 SlicedVertIndex = OtherMeshData->AddVertex(BaseVert);
-
 			BaseToOtherSlicedVertIndex.Add(BaseVertIndex, SlicedVertIndex);
 		}
 	}
@@ -566,9 +636,14 @@ void URuntimeMeshSlicer::SliceRuntimeMeshSection(const FRuntimeMeshDataPtr& InRu
 			{
 				SlicedOtherV[i] = BaseToOtherSlicedVertIndex.Find(BaseV[i]);
 				// Each base vert _must_ exist in either BaseToSlicedVertIndex or BaseToOtherSlicedVertIndex 
-				check((SlicedV[i] != nullptr) != (SlicedOtherV[i] != nullptr));
+				//check((SlicedV[i] != nullptr) != (SlicedOtherV[i] != nullptr));
 			}
 		}
+
+		float PlaneDist[3];
+		PlaneDist[0] = VertDistance[BaseV[0]];
+		PlaneDist[1] = VertDistance[BaseV[1]];
+		PlaneDist[2] = VertDistance[BaseV[2]];
 
 		// If all verts survived plane cull, keep the triangle
 		if (SlicedV[0] != nullptr && SlicedV[1] != nullptr && SlicedV[2] != nullptr)
@@ -576,9 +651,10 @@ void URuntimeMeshSlicer::SliceRuntimeMeshSection(const FRuntimeMeshDataPtr& InRu
 			NewMeshData->AddIndex(*SlicedV[0]);
 			NewMeshData->AddIndex(*SlicedV[1]);
 			NewMeshData->AddIndex(*SlicedV[2]);
+			Tri_Is_Adj_To_Plane_In_Edge(BaseV, PlaneDist, ClipEdges, SourceMeshData);
 		}
 		// If all verts were removed by plane cull
-		else if (SlicedV[0] == nullptr && SlicedV[1] == nullptr && SlicedV[2] == nullptr)
+		else if (SlicedOtherV[0] != nullptr && SlicedOtherV[1] != nullptr && SlicedOtherV[2] != nullptr)
 		{
 			// If creating other half, add all verts to that
 			if (bShouldCreateOtherHalf)
@@ -586,6 +662,7 @@ void URuntimeMeshSlicer::SliceRuntimeMeshSection(const FRuntimeMeshDataPtr& InRu
 				OtherMeshData->AddIndex(*SlicedOtherV[0]);
 				OtherMeshData->AddIndex(*SlicedOtherV[1]);
 				OtherMeshData->AddIndex(*SlicedOtherV[2]);
+				Tri_Is_Adj_To_Plane_In_Edge(BaseV, PlaneDist, ClipEdges, SourceMeshData, true);
 			}
 		}
 		// If partially culled, clip to create 1 or 2 new triangles
@@ -599,11 +676,7 @@ void URuntimeMeshSlicer::SliceRuntimeMeshSection(const FRuntimeMeshDataPtr& InRu
 
 			FUtilEdge3D NewClipEdge;
 			int32 ClippedEdges = 0;
-
-			float PlaneDist[3];
-			PlaneDist[0] = VertDistance[BaseV[0]];
-			PlaneDist[1] = VertDistance[BaseV[1]];
-			PlaneDist[2] = VertDistance[BaseV[2]];
+					
 
 			for (int32 EdgeIdx = 0; EdgeIdx < 3; EdgeIdx++)
 			{
@@ -616,7 +689,7 @@ void URuntimeMeshSlicer::SliceRuntimeMeshSection(const FRuntimeMeshDataPtr& InRu
 					FinalVerts[NumFinalVerts++] = *SlicedV[ThisVert];
 				}
 				// If not, add to other side
-				else if (bShouldCreateOtherHalf)
+				if (SlicedOtherV[ThisVert] != nullptr && bShouldCreateOtherHalf)
 				{
 					check(NumOtherFinalVerts < 4);
 					OtherFinalVerts[NumOtherFinalVerts++] = *SlicedOtherV[ThisVert];
@@ -625,18 +698,59 @@ void URuntimeMeshSlicer::SliceRuntimeMeshSection(const FRuntimeMeshDataPtr& InRu
 				// If start and next vert are on opposite sides, add intersection
 				int32 NextVert = (EdgeIdx + 1) % 3;
 
-				if ((SlicedV[EdgeIdx] == nullptr) != (SlicedV[NextVert] == nullptr))
-				{
-					// Find distance along edge that plane is
-					float Alpha = -PlaneDist[ThisVert] / (PlaneDist[NextVert] - PlaneDist[ThisVert]);
-					// Interpolate vertex params to that point
-					FRuntimeMeshAccessorVertex InterpVert = InterpolateVert(
-						SourceMeshData->GetVertex(BaseV[ThisVert]),
-						SourceMeshData->GetVertex(BaseV[NextVert]),
-						FMath::Clamp(Alpha, 0.0f, 1.0f));
+				bool VertOnSlicePlane = (SlicedV[EdgeIdx] != nullptr && SlicedOtherV[EdgeIdx] != nullptr);
+				bool NextVertOnSlicePlane = (SlicedV[NextVert] != nullptr && SlicedOtherV[NextVert] != nullptr);
 
-					// Add to vertex buffer
-					int32 InterpVertIndex = NewMeshData->AddVertex(InterpVert);
+				// If vert is on SlicePlane add it to both ClipEdges
+				if (VertOnSlicePlane)
+				{
+					check(ClippedEdges < 2);
+					if (ClippedEdges == 0)
+					{
+						NewClipEdge.V0 = SourceMeshData->GetVertex(BaseV[ThisVert]).Position;
+					}
+					else
+					{
+						NewClipEdge.V1 = SourceMeshData->GetVertex(BaseV[ThisVert]).Position;
+					}
+					/*if (SlicedV[NextVert] == nullptr)
+						NewClipEdge.V0 = SourceMeshData->GetVertex(BaseV[ThisVert]).Position;
+					else
+						NewClipEdge.V1 = SourceMeshData->GetVertex(BaseV[ThisVert]).Position;	*/				
+
+					ClippedEdges++;
+				}
+				else if ((SlicedV[EdgeIdx] == nullptr) != (SlicedV[NextVert] == nullptr) && !NextVertOnSlicePlane)
+				{
+					SlicedEdge SlicedEdge;
+					SlicedEdge.Index0 = BaseV[ThisVert];
+					SlicedEdge.Index1 = BaseV[NextVert];
+					EdgeIsSlicedAlready = EdgeAlreadySliced(SlicedEdges, SlicedEdge);
+
+					FRuntimeMeshAccessorVertex InterpVert;
+					int32 InterpVertIndex;
+
+					
+					if (!EdgeIsSlicedAlready)
+					{
+						// Find distance along edge that plane is
+						float Alpha = -PlaneDist[ThisVert] / (PlaneDist[NextVert] - PlaneDist[ThisVert]);
+						// Interpolate vertex params to that point
+						InterpVert = InterpolateVert(
+							SourceMeshData->GetVertex(BaseV[ThisVert]),
+							SourceMeshData->GetVertex(BaseV[NextVert]),
+							FMath::Clamp(Alpha, 0.0f, 1.0f));
+
+						// Add to vertex buffer
+						InterpVertIndex = NewMeshData->AddVertex(InterpVert);
+
+						SlicedEdge.FirstHalfIndex = InterpVertIndex;
+					}
+					else
+					{
+						InterpVertIndex = SlicedEdge.FirstHalfIndex;
+						InterpVert = NewMeshData->GetVertex(InterpVertIndex);
+					}
 
 					// Save vert index for this poly
 					check(NumFinalVerts < 4);
@@ -645,7 +759,16 @@ void URuntimeMeshSlicer::SliceRuntimeMeshSection(const FRuntimeMeshDataPtr& InRu
 					// If desired, add to the poly for the other half as well
 					if (bShouldCreateOtherHalf)
 					{
-						int32 OtherInterpVertIndex = OtherMeshData->AddVertex(InterpVert);
+						int32 OtherInterpVertIndex;
+
+						if (!EdgeIsSlicedAlready)
+						{
+							OtherInterpVertIndex = OtherMeshData->AddVertex(InterpVert);
+
+							SlicedEdge.OtherHalfIndex = OtherInterpVertIndex;
+						}
+						else
+							OtherInterpVertIndex = SlicedEdge.OtherHalfIndex;
 
 						check(NumOtherFinalVerts < 4);
 						OtherFinalVerts[NumOtherFinalVerts++] = OtherInterpVertIndex;
@@ -660,6 +783,16 @@ void URuntimeMeshSlicer::SliceRuntimeMeshSection(const FRuntimeMeshDataPtr& InRu
 					else
 					{
 						NewClipEdge.V1 = InterpVert.Position;
+					}
+					/*if (SlicedV[EdgeIdx] != nullptr)
+						NewClipEdge.V0 = InterpVert.Position;
+					else
+						NewClipEdge.V1 = InterpVert.Position;*/
+
+
+					if (!EdgeIsSlicedAlready)
+					{
+						SlicedEdges.Add(SlicedEdge);
 					}
 
 					ClippedEdges++;
@@ -999,3 +1132,5 @@ void URuntimeMeshSlicer::SliceRuntimeMeshComponent(URuntimeMeshComponent* InRunt
 
 	}
 }
+
+

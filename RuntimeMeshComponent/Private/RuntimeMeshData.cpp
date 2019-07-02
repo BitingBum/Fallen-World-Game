@@ -36,6 +36,7 @@ DECLARE_CYCLE_STAT(TEXT("RM - Update Mesh Section - Blueprint Packed Buffer"), S
 DECLARE_CYCLE_STAT(TEXT("RM - Get Readonly Section Accessor"), STAT_RuntimeMesh_GetReadonlyMeshAccessor, STATGROUP_RuntimeMesh);
 
 DECLARE_CYCLE_STAT(TEXT("RM - Clear Mesh Section"), STAT_RuntimeMesh_ClearMeshSection, STATGROUP_RuntimeMesh);
+
 DECLARE_CYCLE_STAT(TEXT("RM - Clear All Mesh Sections"), STAT_RuntimeMesh_ClearAllMeshSections, STATGROUP_RuntimeMesh);
 DECLARE_CYCLE_STAT(TEXT("RM - Get Section Bounding Box"), STAT_RuntimeMesh_GetSectionBoundingBox, STATGROUP_RuntimeMesh);
 
@@ -55,10 +56,32 @@ DECLARE_CYCLE_STAT(TEXT("RM - Set Mesh Collision Section"), STAT_RuntimeMesh_Set
 DECLARE_CYCLE_STAT(TEXT("RM - Clear Mesh Collision Section"), STAT_RuntimeMesh_ClearMeshCollisionSection, STATGROUP_RuntimeMesh);
 DECLARE_CYCLE_STAT(TEXT("RM - Clear All Mesh Collision Sections"), STAT_RuntimeMesh_ClearAllMeshCollisionSections, STATGROUP_RuntimeMesh);
 
+///////////////////////////////////////////////////////////////////////My Modifications//////////////////////////////////////////////////////////////////////////////////
+DECLARE_CYCLE_STAT(TEXT("RM - Move Multiple Mesh Sections And Convex Collision Sections"), STAT_RuntimeMesh_MoveMeshSectionsAndConvexCollisions, STATGROUP_RuntimeMesh);
+
+DECLARE_CYCLE_STAT(TEXT("RM - Move Mesh Convex Collision Section"), STAT_RuntimeMesh_MoveConvexCollisionSection, STATGROUP_RuntimeMesh);
+DECLARE_CYCLE_STAT(TEXT("RM - Move Mesh Convex Collision Sections"), STAT_RuntimeMesh_MoveConvexCollisionSections, STATGROUP_RuntimeMesh);
+DECLARE_CYCLE_STAT(TEXT("RM - Move Mesh Section"), STAT_RuntimeMesh_MoveMeshSection, STATGROUP_RuntimeMesh);
+DECLARE_CYCLE_STAT(TEXT("RM - Move Mesh Sections"), STAT_RuntimeMesh_MoveMeshSections, STATGROUP_RuntimeMesh);
+DECLARE_CYCLE_STAT(TEXT("RM - Create Mesh Sections - Internal"), STAT_RuntimeMesh_CreateSectionsInternal, STATGROUP_RuntimeMesh);
+
+DECLARE_CYCLE_STAT(TEXT("RM - Clear Multiple Mesh Sections"), STAT_RuntimeMesh_ClearMeshSections, STATGROUP_RuntimeMesh);
+DECLARE_CYCLE_STAT(TEXT("RM - Clear Multiple Mesh Convex Collision Sections"), STAT_RuntimeMesh_ClearMeshConvexCollisionSections, STATGROUP_RuntimeMesh);
+DECLARE_CYCLE_STAT(TEXT("RM - Clear Multiple Mesh Sections And Convex Collision Sections"), STAT_RuntimeMesh_ClearMeshSectionsAndConvexCollisions, STATGROUP_RuntimeMesh);
+
+DECLARE_CYCLE_STAT(TEXT("RM - Add Convex Collision Sections"), STAT_RuntimeMesh_AddConvexCollisionSections, STATGROUP_RuntimeMesh);
+
+DECLARE_CYCLE_STAT(TEXT("RM - Set All Mesh Sections Visible"), STAT_RuntimeMesh_SetAllMeshSectionsVisible, STATGROUP_RuntimeMesh);
+
+DECLARE_CYCLE_STAT(TEXT("RM - Update Section Properties Internal"), STAT_RuntimeMesh_UpdateAllSectionsPropertiesInternal, STATGROUP_RuntimeMesh);
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 DECLARE_CYCLE_STAT(TEXT("RM - Add Convex Collision Section"), STAT_RuntimeMesh_AddConvexCollisionSection, STATGROUP_RuntimeMesh);
 DECLARE_CYCLE_STAT(TEXT("RM - Set Convex Collision Section"), STAT_RuntimeMesh_SetConvexCollisionSection, STATGROUP_RuntimeMesh);
 DECLARE_CYCLE_STAT(TEXT("RM - Clear Convex Collision Section"), STAT_RuntimeMesh_ClearConvexCollisionSection, STATGROUP_RuntimeMesh);
 DECLARE_CYCLE_STAT(TEXT("RM - Clear All Convex Collision Sections"), STAT_RuntimeMesh_ClearAllConvexCollisionSections, STATGROUP_RuntimeMesh);
+
 
 DECLARE_CYCLE_STAT(TEXT("RM - Create Mesh Section - Internal"), STAT_RuntimeMesh_CreateSectionInternal, STATGROUP_RuntimeMesh);
 DECLARE_CYCLE_STAT(TEXT("RM - Update Mesh Section - Internal"), STAT_RuntimeMesh_UpdateSectionInternal, STATGROUP_RuntimeMesh);
@@ -231,7 +254,7 @@ void FRuntimeMeshData::CreateMeshSectionByMove(int32 SectionId, const TSharedPtr
 	CheckCreate(MeshData->NumUVChannels(), true);
 
 	auto NewSection = CreateOrResetSection(SectionId, MeshData->IsUsingHighPrecisionTangents(), MeshData->IsUsingHighPrecisionUVs(), MeshData->NumUVChannels(), MeshData->IsUsing32BitIndices(), UpdateFrequency);
-
+		
 	NewSection->UpdatePositionBuffer(MeshData->GetPositionStream(), true);
 	NewSection->UpdateTangentsBuffer(MeshData->GetTangentStream(), true);
 	NewSection->UpdateUVsBuffer(MeshData->GetUVStream(), true);
@@ -667,6 +690,8 @@ void FRuntimeMeshData::ClearMeshSection(int32 SectionId)
 	}
 }
 
+
+
 void FRuntimeMeshData::ClearAllMeshSections()
 {
 	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_ClearAllMeshSections);
@@ -881,6 +906,8 @@ void FRuntimeMeshData::ClearMeshCollisionSection(int32 CollisionSectionIndex)
 	MarkCollisionDirty();
 }
 
+
+
 void FRuntimeMeshData::ClearAllMeshCollisionSections()
 {
 	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_ClearAllMeshCollisionSections);
@@ -892,37 +919,529 @@ void FRuntimeMeshData::ClearAllMeshCollisionSections()
 	MarkCollisionDirty();
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////AddConvexCollisionSection//////////////////////////////////////////////////////////////////////////////////////
-//int32 FRuntimeMeshData::AddConvexCollisionSection(/*TArray<FVector> ConvexVerts*/FKConvexElem ConvexShape)
-//{
-//	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_AddConvexCollisionSection);
-//
-//	FRuntimeMeshScopeLock Lock(SyncRoot);
-//
-//	int32 NewIndex = 0;
-//	while (ConvexCollisionSections.Contains(NewIndex))
-//	{
-//		NewIndex++;
-//	}
-//
-//	//auto& NewConvexShape = ConvexCollisionShapes.Add(NewIndex);
-//	auto& ConvexSection = ConvexCollisionSections.Add(NewIndex);
-//
-//	FKConvexElem NewConvexShape = ConvexShape;
-//
-//	ConvexSection.VertexBuffer = NewConvexShape.VertexData;
-//	ConvexSection.BoundingBox = NewConvexShape.ElemBox;
-//	NewConvexShape.GetPlanes(ConvexSection.ConvexPlanes);
-//
-//	MarkCollisionDirty();
-//
-//	return NewIndex;
-//}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////My Modifications//////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void FRuntimeMeshData::GetConvexCollisionSectionsKeys(TArray<int32>& Keys)
+{
+	FRuntimeMeshScopeLock Lock(SyncRoot);
 
-int32 FRuntimeMeshData::AddConvexCollisionSection(const TArray<FVector>& ConvexVerts, const TArray<TArray<uint32>> Indices, const TArray<TMap<uint32, int64>> Neighbours)
+	ConvexCollisionSections.GenerateKeyArray(Keys);
+}
+
+int32 FRuntimeMeshData::GetNumConvexCollisionSections() const
+{
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	return ConvexCollisionSections.Num();
+}
+
+FVector FRuntimeMeshData::CalculateCentroid(const TArray<FVector>& VertexBuffer)
+{
+	FVector Centroid = FVector::ZeroVector;
+	for (int32 i = 0; i < VertexBuffer.Num(); i++)
+	{
+		Centroid += VertexBuffer[i];
+	}
+	Centroid /= VertexBuffer.Num();
+
+	return Centroid;
+}
+
+void FRuntimeMeshData::MoveMeshSectionsAndConvexCollisions(const TArray<int32>& SectionIds, const TArray<int32>& CollisionSectionIds, TArray<FRuntimeMeshSectionPtr>& SourceSectionsToMove, TArray<FRuntimeMeshCollisionConvexMesh>& SourceConvexCollisionSectionsToMove)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_MoveMeshSectionsAndConvexCollisions);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	MoveMeshSections(SectionIds, SourceSectionsToMove);
+
+	MoveConvexCollisionSections(CollisionSectionIds, SourceConvexCollisionSectionsToMove);
+}
+
+void FRuntimeMeshData::MoveMeshSectionsAndConvexCollisions(TArray<FRuntimeMeshSectionPtr>& SourceSectionsToMove, TArray<FRuntimeMeshCollisionConvexMesh>& SourceConvexCollisionSectionsToMove)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_MoveMeshSectionsAndConvexCollisions);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	MoveMeshSections(SourceSectionsToMove);
+
+	MoveConvexCollisionSections(SourceConvexCollisionSectionsToMove);
+}
+
+
+void FRuntimeMeshData::MoveConvexCollisionSection(int32 CollisionSectionId, FRuntimeMeshCollisionConvexMesh& SourceConvexCollisionSection)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_MoveConvexCollisionSection);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	FRuntimeMeshCollisionConvexMesh NewCollisionSection;
+
+	MoveConvexMeshBuffers(NewCollisionSection, SourceConvexCollisionSection);
+
+	AddConvexCollisionSection(NewCollisionSection, CollisionSectionId);
+
+}
+
+void FRuntimeMeshData::MoveConvexCollisionSection(FRuntimeMeshCollisionConvexMesh& SourceConvexCollisionSection)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_MoveConvexCollisionSection);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	FRuntimeMeshCollisionConvexMesh NewCollisionSection;
+
+	MoveConvexMeshBuffers(NewCollisionSection, SourceConvexCollisionSection);
+
+	AddConvexCollisionSection(NewCollisionSection);
+
+}
+
+void FRuntimeMeshData::MoveConvexCollisionSections(const TArray<int32>& CollisionSectionIds, TArray<FRuntimeMeshCollisionConvexMesh>& SourceConvexCollisionSections)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_MoveConvexCollisionSections);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	TArray<FRuntimeMeshCollisionConvexMesh> NewConvexCollisionSections;
+
+	for (int32 i = 0; i < SourceConvexCollisionSections.Num(); i++)
+	{
+		FRuntimeMeshCollisionConvexMesh NewCollisionSection;
+
+		MoveConvexMeshBuffers(NewCollisionSection, SourceConvexCollisionSections[i]);
+
+		NewConvexCollisionSections.Add(NewCollisionSection);
+	}
+
+	AddConvexCollisionSections(NewConvexCollisionSections, CollisionSectionIds);
+}
+
+void FRuntimeMeshData::MoveConvexCollisionSections(TArray<FRuntimeMeshCollisionConvexMesh>& SourceConvexCollisionSections)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_MoveConvexCollisionSections);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	TArray<FRuntimeMeshCollisionConvexMesh> NewConvexCollisionSections;	
+
+	for (int32 i = 0; i < SourceConvexCollisionSections.Num(); i++)
+	{		
+		FRuntimeMeshCollisionConvexMesh NewCollisionSection;
+
+		MoveConvexMeshBuffers(NewCollisionSection, SourceConvexCollisionSections[i]);
+
+		NewConvexCollisionSections.Add(NewCollisionSection);
+	}
+
+	AddConvexCollisionSections(NewConvexCollisionSections);
+}
+
+void FRuntimeMeshData::CopyMeshSection(int32 SectionId, FRuntimeMeshSectionPtr SourceSectionData, bool bCreateCollision /*= false*/,
+	EUpdateFrequency UpdateFrequency /*= EUpdateFrequency::Average*/, ESectionUpdateFlags UpdateFlags /*= ESectionUpdateFlags::None*/)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_CreateMeshSection_MeshData);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	if (SourceSectionData)
+	{
+		CheckCreate(SourceSectionData->GetUVsBuffer().NumUVs(), true);
+
+		auto NewSection = CreateOrResetSection(SectionId, SourceSectionData->GetTangentsBuffer().IsUsingHighPrecision(), SourceSectionData->GetUVsBuffer().IsUsingHighPrecision(),
+			SourceSectionData->GetUVsBuffer().NumUVs(), SourceSectionData->GetIndexBuffer().Is32BitIndices(), UpdateFrequency);
+
+		NewSection->UpdatePositionBuffer(SourceSectionData->GetPositionBuffer().GetData(), false);
+		NewSection->UpdateTangentsBuffer(SourceSectionData->GetTangentsBuffer().GetData(), false);
+		NewSection->UpdateUVsBuffer(SourceSectionData->GetUVsBuffer().GetData(), false);
+		NewSection->UpdateColorBuffer(SourceSectionData->GetColorBuffer().GetData(), false);
+		NewSection->UpdateIndexBuffer(SourceSectionData->GetIndexBuffer().GetData(), false);
+
+		// Track collision status and update collision information if necessary
+		NewSection->SetCollisionEnabled(bCreateCollision);
+
+		// Finalize section.
+		CreateSectionInternal(SectionId, UpdateFlags);
+	}
+}
+
+void FRuntimeMeshData::MoveMeshSection(int32 SectionId, FRuntimeMeshSectionPtr SourceSectionData, bool bCreateCollision /*= false*/,
+	EUpdateFrequency UpdateFrequency /*= EUpdateFrequency::Average*/, ESectionUpdateFlags UpdateFlags /*= ESectionUpdateFlags::None*/)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_MoveMeshSection);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);	
+
+	if (SourceSectionData)
+	{
+		CheckCreate(SourceSectionData->GetUVsBuffer().NumUVs(), true);
+
+		auto NewSection = CreateOrResetSection(SectionId, SourceSectionData->GetTangentsBuffer().IsUsingHighPrecision(), SourceSectionData->GetUVsBuffer().IsUsingHighPrecision(),
+			SourceSectionData->GetUVsBuffer().NumUVs(), SourceSectionData->GetIndexBuffer().Is32BitIndices(), UpdateFrequency);
+
+		NewSection->UpdatePositionBuffer(SourceSectionData->GetPositionBuffer().GetData(), true);
+		NewSection->UpdateTangentsBuffer(SourceSectionData->GetTangentsBuffer().GetData(), true);
+		NewSection->UpdateUVsBuffer(SourceSectionData->GetUVsBuffer().GetData(), true);
+		NewSection->UpdateColorBuffer(SourceSectionData->GetColorBuffer().GetData(), true);
+		NewSection->UpdateIndexBuffer(SourceSectionData->GetIndexBuffer().GetData(), true);
+
+		// Track collision status and update collision information if necessary
+		NewSection->SetCollisionEnabled(bCreateCollision);
+
+		// Finalize section.
+		CreateSectionInternal(SectionId, UpdateFlags);
+	}
+}
+
+void FRuntimeMeshData::MoveMeshSection(FRuntimeMeshSectionPtr SourceSectionData, bool bCreateCollision /*= false*/,
+	EUpdateFrequency UpdateFrequency /*= EUpdateFrequency::Average*/, ESectionUpdateFlags UpdateFlags /*= ESectionUpdateFlags::None*/)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_MoveMeshSection);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	if (SourceSectionData)
+	{
+		int32 SectionId = MeshSections.Num();
+
+		CheckCreate(SourceSectionData->GetUVsBuffer().NumUVs(), true);
+
+		auto NewSection = CreateOrResetSection(SectionId, SourceSectionData->GetTangentsBuffer().IsUsingHighPrecision(), SourceSectionData->GetUVsBuffer().IsUsingHighPrecision(),
+			SourceSectionData->GetUVsBuffer().NumUVs(), SourceSectionData->GetIndexBuffer().Is32BitIndices(), UpdateFrequency);
+
+		NewSection->UpdatePositionBuffer(SourceSectionData->GetPositionBuffer().GetData(), true);
+		NewSection->UpdateTangentsBuffer(SourceSectionData->GetTangentsBuffer().GetData(), true);
+		NewSection->UpdateUVsBuffer(SourceSectionData->GetUVsBuffer().GetData(), true);
+		NewSection->UpdateColorBuffer(SourceSectionData->GetColorBuffer().GetData(), true);
+		NewSection->UpdateIndexBuffer(SourceSectionData->GetIndexBuffer().GetData(), true);
+
+		// Track collision status and update collision information if necessary
+		NewSection->SetCollisionEnabled(bCreateCollision);
+
+		// Finalize section.
+		CreateSectionInternal(SectionId, UpdateFlags);
+	}
+}
+
+void FRuntimeMeshData::MoveMeshSections(const TArray<int32>& SectionIds, TArray<FRuntimeMeshSectionPtr>& SourceSectionsData, bool bCreateCollision/* = false*/,
+	EUpdateFrequency UpdateFrequency/* = EUpdateFrequency::Average*/, ESectionUpdateFlags UpdateFlags/* = ESectionUpdateFlags::None*/)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_MoveMeshSections);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	for (int32 i = 0; i < SourceSectionsData.Num(); i++)
+	{
+		if (SourceSectionsData[i])
+		{
+			CheckCreate(SourceSectionsData[i]->GetUVsBuffer().NumUVs(), true);
+
+			auto NewSection = CreateOrResetSection(SectionIds[i], SourceSectionsData[i]->GetTangentsBuffer().IsUsingHighPrecision(), SourceSectionsData[i]->GetUVsBuffer().IsUsingHighPrecision(),
+				SourceSectionsData[i]->GetUVsBuffer().NumUVs(), SourceSectionsData[i]->GetIndexBuffer().Is32BitIndices(), UpdateFrequency);
+
+			NewSection->UpdatePositionBuffer(SourceSectionsData[i]->GetPositionBuffer().GetData(), true);
+			NewSection->UpdateTangentsBuffer(SourceSectionsData[i]->GetTangentsBuffer().GetData(), true);
+			NewSection->UpdateUVsBuffer(SourceSectionsData[i]->GetUVsBuffer().GetData(), true);
+			NewSection->UpdateColorBuffer(SourceSectionsData[i]->GetColorBuffer().GetData(), true);
+			NewSection->UpdateIndexBuffer(SourceSectionsData[i]->GetIndexBuffer().GetData(), true);
+
+			// Track collision status and update collision information if necessary
+			NewSection->SetCollisionEnabled(bCreateCollision);			
+		}
+	}
+	// Finalize sections.
+	CreateSectionsInternal(SectionIds, UpdateFlags);
+
+}
+
+void FRuntimeMeshData::MoveMeshSections(TArray<FRuntimeMeshSectionPtr>& SourceSectionsData, bool bCreateCollision/* = false*/,
+	EUpdateFrequency UpdateFrequency/* = EUpdateFrequency::Average*/, ESectionUpdateFlags UpdateFlags/* = ESectionUpdateFlags::None*/)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_MoveMeshSections);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	TArray<int32> SectionIds;
+
+	for (int32 i = 0; i < SourceSectionsData.Num(); i++)
+	{
+		if (SourceSectionsData[i])
+		{
+			SectionIds.Add(i);
+
+			CheckCreate(SourceSectionsData[i]->GetUVsBuffer().NumUVs(), true);
+
+			auto NewSection = CreateOrResetSection(SectionIds[i], SourceSectionsData[i]->GetTangentsBuffer().IsUsingHighPrecision(), SourceSectionsData[i]->GetUVsBuffer().IsUsingHighPrecision(),
+				SourceSectionsData[i]->GetUVsBuffer().NumUVs(), SourceSectionsData[i]->GetIndexBuffer().Is32BitIndices(), UpdateFrequency);
+
+			NewSection->UpdatePositionBuffer(SourceSectionsData[i]->GetPositionBuffer().GetData(), true);
+			NewSection->UpdateTangentsBuffer(SourceSectionsData[i]->GetTangentsBuffer().GetData(), true);
+			NewSection->UpdateUVsBuffer(SourceSectionsData[i]->GetUVsBuffer().GetData(), true);
+			NewSection->UpdateColorBuffer(SourceSectionsData[i]->GetColorBuffer().GetData(), true);
+			NewSection->UpdateIndexBuffer(SourceSectionsData[i]->GetIndexBuffer().GetData(), true);
+
+			// Track collision status and update collision information if necessary
+			NewSection->SetCollisionEnabled(bCreateCollision);
+		}
+	}
+	// Finalize sections.
+	CreateSectionsInternal(SectionIds, UpdateFlags);
+
+}
+
+void FRuntimeMeshData::ClearMeshSections(const TArray<int32>& SectionIndices)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_ClearMeshSections);
+	
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	if (SectionIndices.Num() > 0)
+	{
+		bool bUpdateCollision = false;
+
+		for (int32 i = 0; i < SectionIndices.Num(); i++)
+		{
+			const int32& SectionId = SectionIndices[i];
+
+			if (DoesSectionExist(SectionId))
+			{
+				FRuntimeMeshSectionPtr Section = MeshSections[SectionId];
+
+				if (!bUpdateCollision)
+					bUpdateCollision = Section->IsCollisionEnabled();
+
+				MeshSections[SectionId].Reset();
+
+				if (RenderProxy.IsValid())
+				{
+					RenderProxy->DeleteSection_GameThread(SectionId);
+				}
+
+				// Strip tailing invalid sections
+				int32 LastValidIndex = GetLastSectionIndex();
+				MeshSections.SetNum(LastValidIndex + 1);
+			}
+		}
+
+		UpdateLocalBounds();
+		MarkRenderStateDirty();
+
+		if (bUpdateCollision)
+		{
+			MarkCollisionDirty();
+		}
+	}
+}
+
+void FRuntimeMeshData::ClearMeshConvexCollisionSections(const TArray<int32>& CollisionSectionIndices)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_ClearMeshConvexCollisionSections);
+	
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	if (CollisionSectionIndices.Num() > 0)
+	{
+		for (int32 i = 0; i < CollisionSectionIndices.Num(); i++)
+		{
+			ConvexCollisionSections.Remove(CollisionSectionIndices[i]);
+		}
+
+		MarkCollisionDirty();
+	}
+}
+
+void FRuntimeMeshData::ClearMeshSectionsAndConvexCollisions(const TArray<int32>& SectionIndices, const TArray<int32>& CollisionSectionIndices)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_ClearMeshSectionsAndConvexCollisions);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	bool bUpdateCollision = false;
+
+	if (SectionIndices.Num() > 0)
+	{
+		for (int32 i = 0; i < SectionIndices.Num(); i++)
+		{
+			const int32& SectionId = SectionIndices[i];
+
+			if (DoesSectionExist(SectionId))
+			{
+				FRuntimeMeshSectionPtr Section = MeshSections[SectionId];
+
+				if (!bUpdateCollision)
+					bUpdateCollision = Section->IsCollisionEnabled();
+
+				MeshSections[SectionId].Reset();
+
+				if (RenderProxy.IsValid())
+				{
+					RenderProxy->DeleteSection_GameThread(SectionId);
+				}
+
+				// Strip tailing invalid sections
+				int32 LastValidIndex = GetLastSectionIndex();
+				MeshSections.SetNum(LastValidIndex + 1);
+			}
+		}
+
+		UpdateLocalBounds();
+		MarkRenderStateDirty();		
+	}
+
+	if (CollisionSectionIndices.Num() > 0)
+	{		
+		for (int32 i = 0; i < CollisionSectionIndices.Num(); i++)
+		{
+			ConvexCollisionSections.Remove(CollisionSectionIndices[i]);
+		}		
+		MarkCollisionDirty();
+	}
+	else
+	{
+		if(bUpdateCollision)
+			MarkCollisionDirty();
+	}	
+}
+
+
+
+
+
+
+void FRuntimeMeshData::CreateConvexMeshFromVerts(FRuntimeMeshCollisionConvexMesh& ConvexMesh, TArray<FVector>& ConvexVerts)
+{	
+	TArray<Face> Faces;
+	qh_quickhull3d(ConvexVerts, ConvexVerts.Num(), Faces, false);
+
+	for (int32 i = 0; i < Faces.Num(); i++)
+	{
+		for (int32 j = 0; j < Faces[i].Indices.Num(); j++)
+		{
+			ConvexMesh.IndexBuffer.Add(Faces[i].Indices[j]);
+		}
+	}
+	ConvexMesh.VertexBuffer = ConvexVerts;
+	ConvexMesh.BoundingBox = FBox(ConvexVerts);
+	ConvexMesh.LocalBounds = FBoxSphereBounds(ConvexVerts, ConvexVerts.Num());
+	ConvexMesh.Centroid = CalculateCentroid(ConvexVerts);
+
+	//WriteVertices(ConvexMesh.VertexBuffer);		
+}
+
+void FRuntimeMeshData::CreateConvexMeshFromBuffers(FRuntimeMeshCollisionConvexMesh& ConvexMesh, const TArray<FVector>& VertexBuffer, const TArray<int32>& IndexBuffer, const TArray<FPlane>& Planes)
+{		
+	ConvexMesh.VertexBuffer = VertexBuffer;
+	ConvexMesh.BoundingBox = FBox(VertexBuffer);
+
+	ConvexMesh.LocalBounds = FBoxSphereBounds(VertexBuffer, VertexBuffer.Num());
+	
+	ConvexMesh.IndexBuffer = IndexBuffer;
+
+	ConvexMesh.Planes = Planes;
+
+	ConvexMesh.Centroid = CalculateCentroid(VertexBuffer);
+
+	//WriteVertices(ConvexMesh.VertexBuffer);	
+}
+
+void FRuntimeMeshData::CreateConvexMeshFromBuffers(FRuntimeMeshCollisionConvexMesh& ConvexMesh, const TArray<FVector>& VertexBuffer, const TArray<int32>& IndexBuffer, const TArray<FPlane>& Planes, const FVector& Centroid)
+{
+	ConvexMesh.VertexBuffer = VertexBuffer;
+	ConvexMesh.BoundingBox = FBox(VertexBuffer);
+
+	ConvexMesh.LocalBounds = FBoxSphereBounds(VertexBuffer, VertexBuffer.Num());
+
+	ConvexMesh.IndexBuffer = IndexBuffer;
+
+	ConvexMesh.Planes = Planes;
+
+	ConvexMesh.Centroid = Centroid;
+}
+
+void FRuntimeMeshData::CreateConvexMeshFromBuffersByMove(FRuntimeMeshCollisionConvexMesh& ConvexMesh, TArray<FVector>& VertexBuffer, FBox& BoundingBox, FBoxSphereBounds& LocalBounds, TArray<int32>& IndexBuffer, TArray<FPlane>& Planes)
+{
+	ConvexMesh.VertexBuffer = MoveTemp(VertexBuffer);
+	ConvexMesh.BoundingBox = MoveTemp(BoundingBox);
+
+	ConvexMesh.LocalBounds = MoveTemp(LocalBounds);
+
+	ConvexMesh.IndexBuffer = MoveTemp(IndexBuffer);
+
+	ConvexMesh.Planes = MoveTemp(Planes);
+
+	ConvexMesh.Centroid = CalculateCentroid(VertexBuffer);	
+}
+
+void FRuntimeMeshData::CreateConvexMeshFromBuffersByMove(FRuntimeMeshCollisionConvexMesh& ConvexMesh, TArray<FVector>& VertexBuffer, FBox& BoundingBox, FBoxSphereBounds& LocalBounds, TArray<int32>& IndexBuffer, TArray<FPlane>& Planes, FVector& Centroid)
+{
+	ConvexMesh.VertexBuffer = MoveTemp(VertexBuffer);
+	ConvexMesh.BoundingBox = MoveTemp(BoundingBox);
+
+	ConvexMesh.LocalBounds = MoveTemp(LocalBounds);
+
+	ConvexMesh.IndexBuffer = MoveTemp(IndexBuffer);
+
+	ConvexMesh.Planes = MoveTemp(Planes);
+
+	ConvexMesh.Centroid = MoveTemp(Centroid);
+}
+
+void FRuntimeMeshData::MoveConvexMeshBuffers(FRuntimeMeshCollisionConvexMesh& TargetConvexMesh, FRuntimeMeshCollisionConvexMesh& SourceConvexMesh)
+{
+	TargetConvexMesh.VertexBuffer = MoveTemp(SourceConvexMesh.VertexBuffer);
+	TargetConvexMesh.BoundingBox = MoveTemp(SourceConvexMesh.BoundingBox);
+
+	TargetConvexMesh.LocalBounds = MoveTemp(SourceConvexMesh.LocalBounds);
+
+	TargetConvexMesh.IndexBuffer = MoveTemp(SourceConvexMesh.IndexBuffer);
+
+	TargetConvexMesh.Planes = MoveTemp(SourceConvexMesh.Planes);
+
+	TargetConvexMesh.Centroid = MoveTemp(SourceConvexMesh.Centroid);
+}
+
+void FRuntimeMeshData::CreateConvexMeshFromBuffers(FRuntimeMeshCollisionConvexMesh& ConvexMesh, TArray<FVector>& VertexBuffer, const TArray<FPlane>& Planes)
+{
+	TArray<Face> Faces;
+	qh_quickhull3d(VertexBuffer, VertexBuffer.Num(), Faces, false);
+
+	for (int32 i = 0; i < Faces.Num(); i++)
+	{
+		for (int32 j = 0; j < Faces[i].Indices.Num(); j++)
+		{
+			ConvexMesh.IndexBuffer.Add(Faces[i].Indices[j]);
+		}
+	}
+
+	ConvexMesh.VertexBuffer = VertexBuffer;
+	ConvexMesh.BoundingBox = FBox(VertexBuffer);
+
+	ConvexMesh.LocalBounds = FBoxSphereBounds(VertexBuffer, VertexBuffer.Num());
+
+	ConvexMesh.Planes = Planes;
+
+	ConvexMesh.Centroid = CalculateCentroid(VertexBuffer);
+
+	//WriteVertices(ConvexMesh.VertexBuffer);	
+}
+
+void FRuntimeMeshData::AddConvexCollisionSection(const FRuntimeMeshCollisionConvexMesh& ConvexMesh, int32 Index)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_AddConvexCollisionSection);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);	
+
+	if (!ConvexCollisionSections.Contains(Index))
+		ConvexCollisionSections.Add(Index, ConvexMesh);
+	else
+		ConvexCollisionSections[Index] = ConvexMesh;
+
+	MarkCollisionDirty();	
+}
+
+int32 FRuntimeMeshData::AddConvexCollisionSection(const FRuntimeMeshCollisionConvexMesh& ConvexMesh)
 {
 	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_AddConvexCollisionSection);
 
@@ -933,24 +1452,164 @@ int32 FRuntimeMeshData::AddConvexCollisionSection(const TArray<FVector>& ConvexV
 	{
 		NewIndex++;
 	}
-
-	auto& Section = ConvexCollisionSections.Add(NewIndex);
-
-	////////////////////////////////////////////////////////////////////////
-	/*Section.IndexBuffer = Indices;
-	Section.NeighboursBuffer = Neighbours;*/
 	
-	////////////////////////////////////////////////////////////////////////
-
-	Section.VertexBuffer = ConvexVerts;
-	Section.BoundingBox = FBox(ConvexVerts);
+	ConvexCollisionSections.Add(NewIndex, ConvexMesh);
 
 	MarkCollisionDirty();
 
 	return NewIndex;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void FRuntimeMeshData::AddConvexCollisionSections(const TArray<FRuntimeMeshCollisionConvexMesh>& ConvexMeshes, const TArray<int32>& Indices)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_AddConvexCollisionSections);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	for (int32 i = 0; i < ConvexMeshes.Num(); i++)
+	{
+		if (!ConvexCollisionSections.Contains(Indices[i]))
+			ConvexCollisionSections.Add(Indices[i], ConvexMeshes[i]);
+		else
+			ConvexCollisionSections[Indices[i]] = ConvexMeshes[i];
+	}
+
+	MarkCollisionDirty();
+}
+
+void FRuntimeMeshData::AddConvexCollisionSections(const TArray<FRuntimeMeshCollisionConvexMesh>& ConvexMeshes)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_AddConvexCollisionSections);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	int32 NewIndex = 0;
+	
+	for (int32 i = 0; i < ConvexMeshes.Num(); i++)
+	{
+		while (ConvexCollisionSections.Contains(NewIndex))
+		{
+			NewIndex++;
+		}
+
+		ConvexCollisionSections.Add(NewIndex, ConvexMeshes[i]);
+	}
+
+	MarkCollisionDirty();
+}
+
+
+void FRuntimeMeshData::CreateSectionsInternal(const TArray<int32>& SectionIds, ESectionUpdateFlags UpdateFlags)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_CreateSectionsInternal);
+
+	bool bUpdateCollision = false;
+
+	for (int32 i = 0; i < SectionIds.Num(); i++)
+	{
+		int32 SectionId = SectionIds[i];
+
+		check(DoesSectionExist(SectionId));
+		FRuntimeMeshSectionPtr Section = MeshSections[SectionId];
+
+		// Send section creation to render thread
+		if (RenderProxy.IsValid())
+		{
+			RenderProxy->CreateSection_GameThread(SectionId, Section->GetSectionCreationParams());
+		}		
+
+		// Do any additional processing on the section for this update.
+		ERuntimeMeshBuffersToUpdate BuffersToUpdate; // This is ignored for creation as all buffers are updated.
+		HandleCommonSectionUpdateFlags(SectionId, UpdateFlags, BuffersToUpdate);
+
+		// Send the section creation notification to all linked RMC's
+		DoOnGameThread(FRuntimeMeshGameThreadTaskDelegate::CreateLambda(
+			[SectionId](URuntimeMesh* Mesh)
+		{
+			Mesh->SendSectionCreation(SectionId);
+		}));
+
+		if (!bUpdateCollision)
+			bUpdateCollision = Section->IsCollisionEnabled();
+	}
+	
+	// Update the combined local bounds		
+	UpdateLocalBounds();
+
+	if (bUpdateCollision)
+		MarkCollisionDirty(true);
+
+	MarkChanged();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////Sections Visibility/////////////////////////////////////////////////////////////////////////////////////
+
+void FRuntimeMeshData::SetAllMeshSectionsVisible(bool bNewVisibility)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_SetAllMeshSectionsVisible);
+
+	FRuntimeMeshScopeLock Lock(SyncRoot);
+
+	for (int32 SectionIndex = 0; SectionIndex < MeshSections.Num(); SectionIndex++)
+	{
+		if (DoesSectionExist(SectionIndex))
+		{
+			MeshSections[SectionIndex]->SetVisible(bNewVisibility);			
+		}
+	}
+
+	// Finish the update
+	UpdateAllSectionsPropertiesInternal(false);
+}
+
+void FRuntimeMeshData::UpdateAllSectionsPropertiesInternal(bool bUpdateRequiresProxyRecreateIfStatic)
+{
+	SCOPE_CYCLE_COUNTER(STAT_RuntimeMesh_UpdateAllSectionsPropertiesInternal);
+
+	bool bRequiresRecreate = false;
+
+	TArray<FRuntimeMeshSectionPropertyUpdateParamsPtr> SectionsData;
+
+	for (int32 SectionIndex = 0; SectionIndex < MeshSections.Num(); SectionIndex++)
+	{
+		check(DoesSectionExist(SectionIndex));
+		FRuntimeMeshSectionPtr Section = MeshSections[SectionIndex];
+
+		SectionsData.Add(Section->GetSectionPropertyUpdateData());
+
+		bRequiresRecreate = bUpdateRequiresProxyRecreateIfStatic &&
+			Section->GetUpdateFrequency() == EUpdateFrequency::Infrequent;
+	}
+
+	if (RenderProxy.IsValid())
+	{
+		RenderProxy->UpdateAllSectionsProperties_GameThread(SectionsData);
+	}
+
+	if (bRequiresRecreate)
+	{
+		MarkRenderStateDirty();
+	}
+	else
+	{
+		SendAllSectionsPropertiesUpdate();
+	}
+
+	MarkChanged();
+}
+
+void FRuntimeMeshData::SendAllSectionsPropertiesUpdate()
+{
+	DoOnGameThread(FRuntimeMeshGameThreadTaskDelegate::CreateLambda(
+		[](URuntimeMesh* Mesh)
+	{
+		Mesh->SendAllSectionsPropertiesUpdate();
+	}));
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////My Modifications//////////////////////////////////////////////////////////////////////////////////////
+	
 
 int32 FRuntimeMeshData::AddConvexCollisionSection(TArray<FVector>& ConvexVerts)
 {
@@ -964,26 +1623,10 @@ int32 FRuntimeMeshData::AddConvexCollisionSection(TArray<FVector>& ConvexVerts)
 		NewIndex++;
 	}
 
-	auto& Section = ConvexCollisionSections.Add(NewIndex);
+	FRuntimeMeshCollisionConvexMesh Section;
+	CreateConvexMeshFromVerts(Section, ConvexVerts);
 
-	////////////////////////////////////////////////////////////////////////
-	TArray<Face> Faces;
-	qh_quickhull3d(ConvexVerts, ConvexVerts.Num(), Faces, false);
-
-	for (int32 i = 0; i < Faces.Num(); i++)
-	{
-		for (int32 j = 0; j < Faces[i].Indices.Num(); j++)
-		{
-			Section.IndexBuffer.Add(Faces[i].Indices[j]);
-		}		
-	}
-	////////////////////////////////////////////////////////////////////////
-
-	Section.VertexBuffer = ConvexVerts;
-	Section.BoundingBox = FBox(ConvexVerts);	
-
-	/*WriteVertices(Section.VertexBuffer);
-	CheckFaces(Section.FacesBuffer);*/
+	ConvexCollisionSections.Add(NewIndex, Section);
 
 	MarkCollisionDirty();
 
@@ -1003,6 +1646,8 @@ void FRuntimeMeshData::SetConvexCollisionSection(int32 ConvexSectionIndex, TArra
 
 	Section.VertexBuffer = ConvexVerts;
 	Section.BoundingBox = FBox(ConvexVerts);
+	Section.LocalBounds = FBoxSphereBounds(ConvexVerts, ConvexVerts.Num());
+	Section.Centroid = CalculateCentroid(ConvexVerts);
 
 	MarkCollisionDirty();
 }
@@ -1076,6 +1721,8 @@ void FRuntimeMeshData::SetCollisionConvexMeshes(const TArray<TArray<FVector>>& C
 		
 		Section.VertexBuffer = ConvexMeshes[i];
 		Section.BoundingBox = FBox(ConvexMeshes[i]);
+		Section.LocalBounds = FBoxSphereBounds(ConvexMeshes[i], ConvexMeshes[i].Num());
+		Section.Centroid = CalculateCentroid(ConvexMeshes[i]);
 	}
 
 	MarkCollisionDirty();
@@ -1100,6 +1747,8 @@ void FRuntimeMeshData::SetCollisionConvexMeshes(const TArray<TArray<FVector>>& C
 
 		Section.VertexBuffer = Convex;
 		Section.BoundingBox = FBox(Convex);
+		Section.LocalBounds = FBoxSphereBounds(Convex, Convex.Num());
+		Section.Centroid = CalculateCentroid(Convex);
 	}
 
 	MarkCollisionDirty();
@@ -1261,6 +1910,8 @@ void FRuntimeMeshData::CreateSectionInternal(int32 SectionId, ESectionUpdateFlag
 
 	MarkChanged();
 }
+
+
 
 void FRuntimeMeshData::UpdateSectionInternal(int32 SectionId, ERuntimeMeshBuffersToUpdate BuffersToUpdate, ESectionUpdateFlags UpdateFlags)
 {
@@ -1698,9 +2349,9 @@ int32 FRuntimeMeshData::NumMeshSections()
 
 FRuntimeMeshSectionPtr FRuntimeMeshData::GetMeshSection(int32 Index)
 {
-	if(Index>=0&&Index< MeshSections.Num())
+	//if(Index>=0&&Index< MeshSections.Num())
 		return MeshSections[Index];
-	return nullptr;
+	//return nullptr;
 }
 
 TArray<FRuntimeMeshSectionPtr> FRuntimeMeshData::GetMeshSections()
@@ -1751,9 +2402,21 @@ int32 FRuntimeMeshData::NumConvexCollisionSections()
 
 FRuntimeMeshCollisionConvexMesh* FRuntimeMeshData::GetConvexCollisionSection(int32 Index)
 {
-	if(ConvexCollisionSections.Contains(Index))
-		return ConvexCollisionSections.Find(Index);
-	return nullptr;
+	return ConvexCollisionSections.Find(Index);
+}
+
+const FRuntimeMeshCollisionConvexMesh& FRuntimeMeshData::GetConvexCollisionSectionConstPointer(int32 Index)
+{
+	check(ConvexCollisionSections.Contains(Index))
+
+	return ConvexCollisionSections[Index];	
+}
+
+FRuntimeMeshCollisionConvexMesh& FRuntimeMeshData::GetConvexCollisionSectionPointer(int32 Index)
+{
+	check(ConvexCollisionSections.Contains(Index))
+
+	return ConvexCollisionSections[Index];
 }
 
 TMap<int32, FRuntimeMeshCollisionConvexMesh> FRuntimeMeshData::GetConvexCollisionSections()

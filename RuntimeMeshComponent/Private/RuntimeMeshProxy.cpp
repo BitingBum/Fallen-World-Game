@@ -72,6 +72,46 @@ void FRuntimeMeshProxy::UpdateSection_RenderThread(int32 SectionId, const FRunti
 	}
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////My Modifications///////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void FRuntimeMeshProxy::UpdateAllSectionsProperties_GameThread(const TArray<FRuntimeMeshSectionPropertyUpdateParamsPtr>& SectionsData)
+{
+	ENQUEUE_UNIQUE_RENDER_COMMAND_TWOPARAMETER(
+		FRuntimeMeshProxyUpdateSectionProperties,
+		FRuntimeMeshProxy*, MeshProxy, this,
+		TArray<FRuntimeMeshSectionPropertyUpdateParamsPtr>, SectionsData, SectionsData,
+		{
+			MeshProxy->UpdateAllSectionsProperties_RenderThread(SectionsData);
+		}
+	);
+}
+
+void FRuntimeMeshProxy::UpdateAllSectionsProperties_RenderThread(const TArray<FRuntimeMeshSectionPropertyUpdateParamsPtr>& SectionsData)
+{
+	check(IsInRenderingThread());
+
+	for (int32 SectionId = 0; SectionId < SectionsData.Num(); SectionId++)
+	{
+		const FRuntimeMeshSectionPropertyUpdateParamsPtr& SectionData = SectionsData[SectionId];
+
+		check(SectionData.IsValid());
+
+		if (Sections.Contains(SectionId))
+		{
+			FRuntimeMeshSectionProxyPtr Section = Sections[SectionId];
+			Section->FinishPropertyUpdate_RenderThread(SectionData);			
+		}
+	}
+
+	// Update the cached values for rendering.
+	UpdateCachedValues();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////My Modifications///////////////////////////////////////////////////////////////////////////////////////
+
+
 void FRuntimeMeshProxy::UpdateSectionProperties_GameThread(int32 SectionId, const FRuntimeMeshSectionPropertyUpdateParamsPtr& SectionData)
 {
 	ENQUEUE_UNIQUE_RENDER_COMMAND_THREEPARAMETER(

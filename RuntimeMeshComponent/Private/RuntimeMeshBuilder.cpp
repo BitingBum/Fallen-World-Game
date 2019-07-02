@@ -625,6 +625,12 @@ int32 FRuntimeMeshIndicesAccessor::AddTriangle(int32 Index0, int32 Index1, int32
 	return NewPosition;
 }
 
+int32 FRuntimeMeshIndicesAccessor::NumTriangles() const
+{
+	check(bIsInitialized);
+	return NumIndices()/3;
+}
+
 int32 FRuntimeMeshIndicesAccessor::GetIndex(int32 Index) const
 {
 	check(bIsInitialized);
